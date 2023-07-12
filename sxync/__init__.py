@@ -1,4 +1,4 @@
-__version__ = "0.0.1-5a"
+__version__ = "0.0.1-6a"
 from . import client
 from . import connection
 from . import room_events
