@@ -96,29 +96,34 @@ class WS:
             if invalid_passwd is not None:
                 invalid_passwd = invalid_passwd.find('li', class_='warning')
             if invalid_passwd:
-                ecode = 301
+                ecode = 202
             else:
-                await self._session.get(self._room_url, headers={'referer': self._login_url})
+                valid_room = await self._session.get(self._room_url, headers={'referer': self._login_url})
+                isvalid = True
+                if valid_room.status in [301,302,303]:
+                    isvalid = False
                 session_id_value = None
                 for cookie in self._session.cookie_jar:
                     if cookie.key == 'sessionid':
                         session_id_value = cookie.value
                         break
-                    
-                if session_id_value:
+                if isvalid and session_id_value:
                     ecode = 200
                     headers['Cookie']=f"csrftoken={csrf_token}; sessionid={session_id_value}"
             self.headers = headers
         if self._client.debug == 1:    
             if ecode == 200: print("[info] [ws] Login success...")
             if ecode == 201: print("[info] [ws] Login as anon success...")
-            elif ecode == 301: print("[info] [ws] Incorrect Password...")
+            elif ecode == 202: print("[info] [ws] Incorrect Password...")
+        if not isvalid:
+            print(f"[info] [ws: {valid_room.status}] The room='{self.name}' doesn't exist")
+            return
         Tasks = [asyncio.create_task(self.listen_websocket())]
         asyncio.gather(*Tasks)
     
     async def _send_command(self, command):
         if self._ws and not self._ws.closed:
-            self._ws.send_json(command)
+            await self._ws.send_json(command)
 
     async def close_session(self):
         if self._session:
