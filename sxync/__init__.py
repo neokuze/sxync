@@ -5,3 +5,4 @@ from . import room_events
 from . import room
 from . import user
 from . import message
+from . import exceptions
