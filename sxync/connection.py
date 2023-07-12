@@ -45,10 +45,10 @@ class WS:
     async def listen_websocket(self):
         try:
             self._ws = await self._session.ws_connect(self._ws_url, headers=self.headers)
-            if int(self.client.debug) >= 2:
+            if int(self.client.debug) <= 2:
                 logging.info("Conexión exitosa al websocket: %s", self._ws_url)
         except Exception as e:
-            if int(self.client.debug) >= 2:
+            if int(self.client.debug) <= 2:
                 logging.error("Error al conectar al websocket: %s", str(e))
         while True:
             try:
@@ -72,14 +72,14 @@ class WS:
                         except asyncio.CancelledError:
                             break
                         except:
-                            if int(self.client.debug) >= 1:
-                                logging.error("Error manejando el comando: %s", cmd, exc_info=True)
+                            if int(self.client.debug) <= 1:
+                                logging.error("Error al ejecutar comando: %s", cmd, exc_info=True)
                                 traceback.print_exc(file=sys.stderr)
-                    elif int(self.client.debug) >= 2:
-                        logging.error("Error manejando el comando: %s | {}".format(kwargs),cmd, exc_info=True)
+                    elif int(self.client.debug) <= 2:
+                        logging.error("Error de comando no manejado: %s | {}".format(kwargs),cmd, exc_info=True)
                 except AssertionError: pass
             except ConnectionResetError:
-                if int(self.client.debug) >= 1:
+                if int(self.client.debug) <= 1:
                     logging.warning("Conexión websocket restablecida.")
                 break
         Tasks = [asyncio.create_task(self.listen_websocket())]
@@ -145,7 +145,7 @@ class WS:
                 if session_id_value:
                     ecode = 200
                     headers['Cookie']=f"csrftoken={csrf_token}; sessionid={session_id_value}"
-            if self._client.debug >= 1:    
+            if self._client.debug <= 1:    
                 if ecode == 200: logging.info("[info] [ws] Login success...")
                 if ecode == 201: logging.info("[info] [ws] Login as anon success...")
                 if ecode == 202: logging.info("[info] [ws] Incorrect Password...")
