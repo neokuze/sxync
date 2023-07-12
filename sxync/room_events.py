@@ -69,7 +69,6 @@ async def on_disconnect_user(data):
         room._userlist[user]['active'] = active
         room._userlist[user]['left_time'] = left_time
         room._userlist[user]['time'] = _time
-        
     await self._client._call_event("leave_user", room, user, left_time)
     
     

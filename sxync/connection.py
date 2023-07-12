@@ -34,29 +34,31 @@ class WS:
     async def listen_websocket(self):
         self._ws = await self._session.ws_connect(self._ws_url, headers=self.headers)
         while True:
-            msg = await self._ws.receive()
-            if self._first_time:
-                await self.on_connect()
-                self._first_time = False
             try:
-                assert msg.type is aiohttp.WSMsgType.TEXT
-                data = json.loads(msg.data)
-                cmd = data.get('command')
-                kwargs = data.get('kwargs') or {}
-                kwargs = {'self': self} | kwargs  # python3.9 
-                if hasattr(room_events, f"on_{cmd}"):
-                    try:
-                        await getattr(room_events, f"on_{cmd}")(kwargs)
-                    except asyncio.CancelledError:
-                        break
-                    except:
-                        if int(self.client.debug) == 2:
-                            print("Error manejando el comando:", cmd, file=sys.stderr)
-                            traceback.print_exc(file=sys.stderr)
-                elif int(self.client.debug) == 2:
-                    print("Comando no manejado: ", cmd, kwargs, file=sys.stderr)
-            except AssertionError:
-                pass
+                msg = await self._ws.receive()
+                if self._first_time:
+                    await self.on_connect()
+                    self._first_time = False
+                try:
+                    assert msg.type is aiohttp.WSMsgType.TEXT
+                    data = json.loads(msg.data)
+                    cmd = data.get('command')
+                    kwargs = data.get('kwargs') or {}
+                    kwargs = {'self': self} | kwargs  # python3.9 
+                    if hasattr(room_events, f"on_{cmd}"):
+                        try:
+                            await getattr(room_events, f"on_{cmd}")(kwargs)
+                        except asyncio.CancelledError:
+                            break
+                        except:
+                            if int(self.client.debug) == 2:
+                                print("Error manejando el comando:", cmd, file=sys.stderr)
+                                traceback.print_exc(file=sys.stderr)
+                    elif int(self.client.debug) == 2:
+                        print("Comando no manejado: ", cmd, kwargs, file=sys.stderr)
+                except AssertionError: pass
+            except ConnectionResetError: pass
+                    
 
     async def _connect(self, anon=False):
         key = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(16)).encode('utf-8')
@@ -113,7 +115,10 @@ class WS:
             elif ecode == 301: print("[info] [ws] Incorrect Password...")
         Tasks = [asyncio.create_task(self.listen_websocket())]
         asyncio.gather(*Tasks)
-        
+    
+    async def _send_command(self, command):
+        if self._ws and not self._ws.closed:
+            self._ws.send_json(command)
 
     async def close_session(self):
         if self._session:
