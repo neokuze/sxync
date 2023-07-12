@@ -18,13 +18,13 @@ class Bot:
         return list(self._tasks.keys())
 
     async def start(self):
+        self._running = True
         for room_name in self._rooms:
             if room_name not in self._tasks:
                 await self.join_room(room_name)
         while True:
             if not self._running:
                 break
-            self._running = True
             await asyncio.sleep(0)  # Cede el control a otros eventos y tareas
 
     async def stop_all(self):
