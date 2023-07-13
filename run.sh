@@ -1,2 +1,2 @@
 #! /bin/bash
-python -B main.py
+python -B examplebot.py
