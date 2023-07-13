@@ -45,23 +45,25 @@ class WS:
     async def listen_websocket(self):
         try:
             self._ws = await self._session.ws_connect(self._ws_url, headers=self.headers)
-            if int(self.client.debug) <= 2:
+            if int(self.client.debug) > 2:
                 logging.info("Conexión exitosa al websocket: %s", self._ws_url)
         except Exception as e:
-            if int(self.client.debug) <= 2:
+            if int(self.client.debug) > 2:
                 logging.error("Error al conectar al websocket: %s", str(e))
         while True:
             try:
                 if self._ws.closed:
                     break
-                logging.debug(f"[ws: {self.name}] Esperando mensaje del websocket...")
+                if int(self.client.debug) > 2:
+                    logging.debug(f"[ws: {self.name}] Esperando mensaje del websocket...")
                 msg = await self._ws.receive()
                 if self._first_time:
                     await self.on_connect()
                     self._first_time = False
                 try:
                     assert msg.type is aiohttp.WSMsgType.TEXT
-                    logging.debug("Mensaje recibido del websocket: %s", msg)
+                    if int(self.client.debug) > 2:
+                        logging.debug("Mensaje recibido del websocket: %s", msg)
                     data = json.loads(msg.data)
                     cmd = data.get('command')
                     kwargs = data.get('kwargs') or {}
@@ -75,7 +77,7 @@ class WS:
                             if int(self.client.debug) <= 1:
                                 logging.error("Error al ejecutar comando: %s", cmd, exc_info=True)
                                 traceback.print_exc(file=sys.stderr)
-                    elif int(self.client.debug) <= 2:
+                    elif int(self.client.debug) >= 2:
                         logging.error("Error de comando no manejado: %s | {}".format(kwargs),cmd, exc_info=True)
                 except AssertionError: pass
             except ConnectionResetError:
