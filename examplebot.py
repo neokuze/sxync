@@ -34,7 +34,7 @@ class Super(sxync.client.Bot):
     async def on_connect(self, room):
         print(f"[info] Estoy conectado en {room.name}.")
 
-bot = SuperBot(config.botuser[0], config.botuser[1], config.rooms)
+bot = Super(config.botuser[0], config.botuser[1], config.rooms)
 
 loop = asyncio.get_event_loop()
 try:
