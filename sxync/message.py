@@ -1,3 +1,5 @@
+from .user import User
+
 class Message(object):  # base
     def __init__(self):
         self._user = None
@@ -38,3 +40,18 @@ class RoomBase(Message):
     def __init__(self):
         self._id = None
         self._tid = 0
+        
+    def quote(self, id=None):
+        if not id: id = self._id
+        return "[quote id={}/]".format(id)
+    
+def _process_room_msg(msg_id, room, user_id, text, msg_time, tid=None, raw = None):
+    msg = RoomBase()
+    msg._user = User(int(user_id))
+    msg._room = room
+    msg._time = msg_time
+    msg._raw = str(raw)
+    msg._body = str(text)
+    msg._id = msg_id
+    msg._tid = tid
+    return msg

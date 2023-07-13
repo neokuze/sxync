@@ -113,9 +113,10 @@ class WS:
         connector._trace_config = aiohttp.TraceConfig()
         connector._trace_config.on_request_start.append(trace_request_ctx)
         connector._trace_config.on_request_end.append(trace_request_headers)
-        isvalid = None
+
         self._session._connector = connector
         response = await self._session.get(self._login_url)
+        isvalid = None
         if response.status == 200:
             page_content = await response.text()
             soup = BeautifulSoup(page_content, 'html.parser')
