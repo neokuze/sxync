@@ -1,3 +1,4 @@
+"""sXync is library based in aiohttp capable of creating a session per group"""
 __version__ = "0.0.1-7a"
 from . import client
 from . import connection
