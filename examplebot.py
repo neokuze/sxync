@@ -6,7 +6,7 @@ import sxync
 
 class config:
     prefix = ["!"]
-    botuser = ["tester", "passwd"]
+    botuser = ["us3rname", "password_0f_bot"] # user_name, password
     rooms = ['sudoers']
 
 class Super(sxync.client.Bot):
