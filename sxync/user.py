@@ -1,5 +1,6 @@
 import aiohttp
 from collections import deque
+from .utils import cleanText
 
 class User: 
     _users = {}
@@ -61,7 +62,8 @@ class User:
             result = data.get('reason')
             if result == "PROFILE FOUND":
                 result = data.get('profile')
-                self._name = result['custom']
+                self._name = cleanText(result['custom'])
+                self._showname = result['custom']
                 self._banner = result['banner']
                 self._profile_img = result['image']
                 

@@ -1,9 +1,8 @@
-"""sXync is library based in aiohttp capable of creating a session per group"""
-__version__ = "0.0.1-7a"
+__version__ = "0.0.1-8a"
 from . import client
 from . import connection
 from . import room_events
 from . import room
-from . import user
 from . import message
+from . import user
 from . import exceptions
