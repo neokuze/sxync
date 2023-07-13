@@ -17,7 +17,7 @@ with open("README.md") as f:
     readme = f.read()
 
 setup(name="sxync",
-      author="Yado",
+      author="Yadiel A. Rodriguez",
       url="https://github.com/neokuze/sxync",
       version=version,
       packages=["sxync"],
