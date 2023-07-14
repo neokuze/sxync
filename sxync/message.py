@@ -35,6 +35,7 @@ class Message(object):  # base
     @property
     def raw(self):
         return self._raw
+
     
 class RoomBase(Message):
     def __init__(self):
@@ -47,7 +48,11 @@ class RoomBase(Message):
     
 def _process_room_msg(msg_id, room, user_id, text, msg_time, tid=None, raw = None):
     msg = RoomBase()
-    msg._user = User(int(user_id))
+    if int(user_id) < 0 and raw:
+        anon_name = raw.get('username_custom')
+        msg._user = User(int(user_id), name=anon_name.lower(), isanon=True, showname=anon_name)
+    else:
+        msg._user = User(int(user_id))
     msg._room = room
     msg._time = msg_time
     msg._raw = str(raw)
