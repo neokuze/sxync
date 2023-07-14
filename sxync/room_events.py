@@ -19,8 +19,8 @@ async def on_message(data):
     await self.client._call_event("message", msg)
     
 async def on_userlist(data):
-    self._user = User(int(data.get('user_id')))
     self = data.get('self') # cliente. duh
+    self._user = User(int(data.get('user_id')))
     self._userlist.clear()
     ul = data.get('userlist')
     for person in ul:
