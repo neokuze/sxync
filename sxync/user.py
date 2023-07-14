@@ -54,6 +54,10 @@ class User:
     def name(self):
         return self._name
     
+    @property
+    def isanon(self):
+        return self._isanon
+    
     async def get_data(self, session):
         lurl = "https://chat.roxvent.com/user/login/"
         url = f"https://chat.roxvent.com/user/API/get_data/?id={self.id}"

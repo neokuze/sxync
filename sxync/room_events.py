@@ -19,6 +19,7 @@ async def on_message(data):
     await self.client._call_event("message", msg)
     
 async def on_userlist(data):
+    self._user = User(int(data.get('user_id')))
     self = data.get('self') # cliente. duh
     self._userlist.clear()
     ul = data.get('userlist')
@@ -65,14 +66,15 @@ async def on_disconnect_user(data):
 async def on_history(data):
     mlist = data.get('messages')
     self = data.get('self')
-    mlist = mlist[1:]
-    for value in mlist:
-        msg_id = value[0]
-        user = value[1]
-        text = value[2]
-        _time = value[3]
-        msg = _process_room_msg(msg_id, self, user, text, _time)
-        self._mqueue[int(msg_id)] = msg
+    if mlist:
+        mlist = mlist[1:]
+        for value in mlist:
+            msg_id = value[0]
+            user = value[1]
+            text = value[2]
+            _time = value[3]
+            msg = _process_room_msg(msg_id, self, user, text, _time)
+            self._mqueue[int(msg_id)] = msg
         
 
 async def on_writing(data):pass
