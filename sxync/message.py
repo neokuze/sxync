@@ -7,6 +7,8 @@ class Message(object):  # base
         self._time = 0
         self._body = str()
         self._raw = str()
+        self._ip   = str()
+        self._device = str()
 
     def __dir__(self):
         return [x for x in
@@ -40,13 +42,12 @@ class Message(object):  # base
 class RoomBase(Message):
     def __init__(self):
         self._id = None
-        self._tid = 0
         
     def quote(self, id=None):
         if not id: id = self._id
         return "[quote id={}/]".format(id)
     
-def _process_room_msg(msg_id, room, user_id, text, msg_time, tid=None, raw = None):
+def _process_room_msg(mid, room, user_id, text, msg_time, raw = None, ip=None, dev=None):
     msg = RoomBase()
     if int(user_id) < 0 and raw:
         anon_name = raw.get('username_custom')
@@ -57,6 +58,7 @@ def _process_room_msg(msg_id, room, user_id, text, msg_time, tid=None, raw = Non
     msg._time = msg_time
     msg._raw = str(raw)
     msg._body = str(text)
-    msg._id = msg_id
-    msg._tid = tid
+    msg._id = mid
+    msg._ip = ip
+    msg._device = dev
     return msg

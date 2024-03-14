@@ -13,20 +13,21 @@ class Room(WS):
         self._mqueue = {}
         self._userlist = {}
         self._log_as_anon = anon
+        self._misc = {}
         super().__init__(client) # debe estar al final para cargar lo demas.
         
     @property
     def name(self):
         return self._name
-    
-    async def on_connect(self):
-        await self._send_command({"command":"get_userlist","kwargs":{"target":self.name}})
-        await self._send_command({"command":"get_history","kwargs":{"target":self.name}})
-        await self._client._call_event("connect", self)
+        
+    @property
+    def misc(self):
+        return self._misc
+        
         
     async def send_msg(self, text, quote=None):
         msg = text if quote == None else f"{quote}{text}"
-        await self._send_command({"command":"message","kwargs":{"text":msg,"target":self.name}})
+        await self._send_command({"cmd":"message","kwargs":{"text":msg,"target":self.name}})
         
     def find_user_by_id(self, args):
         return [(x.id,x.name) for x in self._userlist if x.id == int(args)]

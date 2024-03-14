@@ -25,6 +25,8 @@ class User:
         self._last_time = None
         self._banner = None
         self._profile_img = None
+        self._ip = None
+        self._dev = None
         for attr, val in kwargs.items():
             setattr(self, '_' + attr, val)
         return self
