@@ -1,11 +1,16 @@
 import asyncio
 import typing
 import inspect
+import logging
 
 from .room import Room
 from .exceptions import AlreadyConnected
+from .handler import EventHandler
+from .utils import public_attributes
 
-class Bot:
+logger = logging.getLogger(__name__)
+
+class Bot(EventHandler):
     def __init__(self, username, password, rooms=[]):
         self._username = username
         self._password = password
@@ -13,7 +18,10 @@ class Bot:
         self._rooms = rooms
         self._tasks = {}
         self._running = None
-        
+    
+    def __dir__(self):
+        return public_attributes(self)
+    
     @property
     def rooms(self):
         return list(self._tasks.keys())
@@ -35,7 +43,8 @@ class Bot:
         
     async def join_room(self, room_name):
         if room_name in self._tasks: 
-            raise AlreadyConnected("User already connected.")
+            logger.error("User already connected.")
+            return
         self._tasks[room_name] = Room(room_name, self)
         await asyncio.ensure_future(self._tasks[room_name]._connect(anon=False))
 
@@ -45,22 +54,4 @@ class Bot:
             if self._tasks[room_name]._session:
                 await self._tasks[room_name].close_session()
             del self._tasks[room_name]
-
-    async def on_event(self, event: str, *args: typing.Any, **kwargs: typing.Dict[str, typing.Any]):
-        """print(event, repr(args), repr(kwargs))"""
-
-    async def _call_event(self, event: str, *args, **kwargs):
-        attr = f"on_{event}"
-        await self.on_event(event, *args, **kwargs)
-        if hasattr(self, attr):
-            await getattr(self, attr)(*args, **kwargs)
-
-    def event(self, func, name=None):
-        assert inspect.iscoroutinefunction(func)
-        if name is None:
-            event_name = func.__name__
-        else:
-            event_name = name
-        setattr(self, event_name, func)
-    
-
+            

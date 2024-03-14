@@ -1,6 +1,6 @@
 from collections import deque
 from .connection import WS
-from .utils import cleanText
+from .utils import cleanText, public_attributes
 
 class Room(WS):
     def __init__(self, name, client, anon=False):
@@ -16,6 +16,9 @@ class Room(WS):
         self._misc = {}
         self._user = None
         super().__init__(client) # debe estar al final para cargar lo demas.
+
+    def __dir__(self):
+        return public_attributes(self)
         
     @property
     def name(self):
