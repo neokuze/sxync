@@ -5,7 +5,7 @@ from .user import User
 
 async def on_ok(data):
     """
-
+    proper use of ok room info
     """
     self = data.get('self')
     user_info = data.get('you')
