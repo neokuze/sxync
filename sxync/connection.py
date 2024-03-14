@@ -13,8 +13,6 @@ from . import room as group
 from .exceptions import InvalidRoom
 
 import logging
-logging.basicConfig(level=logging.DEBUG)
-
 
 class WS:
     def __init__(self, client):
@@ -40,7 +38,8 @@ class WS:
     async def listen_websocket(self):
         async with self._session as session:
             async with session.ws_connect(self._ws_url, headers=self.headers) as ws:
-                logging.info("Conexión WebSocket establecida")
+                if int(self.client.debug) <= 2:
+                    logging.info(f"[info] {self.name} Websocket connection success!")
                 asyncio.create_task(self.receive_messages(ws))
                 while True:
                     try:
@@ -53,13 +52,12 @@ class WS:
             try:
                 msg = await ws.receive()
                 assert msg.type is aiohttp.WSMsgType.TEXT
-
                 await self._process_cmd(msg.data)
             except AssertionError: pass
             except asyncio.CancelledError: break
             except ConnectionResetError:
-                if int(self.client.debug) <= 1:
-                    logging.info("Conexión websocket restablecida.")
+                if int(self.client.debug) <= 2:
+                    logging.info(f"[info] {self.name} Websocket connection was reset.")
             
     async def _process_cmd(self, data):
         data = json.loads(data)
@@ -74,7 +72,7 @@ class WS:
             try:
                 await getattr(room_events, f"on_{cmd}")(kwargs)
             except:
-                logging.error("Error al ejecutar comando: %s", cmd, exc_info=True)
+                logging.error("Error handling command: %s", cmd, exc_info=True)
                 traceback.print_exc(file=sys.stderr)
         else:
             logging.warning("Unhandled received command", cmd, kwargs)
