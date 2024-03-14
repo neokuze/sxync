@@ -5,7 +5,7 @@ from .user import User
 
 async def on_ok(data):
     """
-    proper use of ok room info
+    proper use of room data.
     """
     self = data.get('self')
     user_info = data.get('you')
@@ -21,11 +21,11 @@ async def on_connect(data):
     await self._send_command({"cmd":"get_history","kwargs":{"target":self.name}})
     await self.client._call_event("connect", self)
 
-async def on_update_user_counter(data):
+async def on_update_user_counter(data): #TODO maybe change
     self = data.get('self')
     self._usercounter = data.get('number')
     
-async def on_message(data):
+async def on_message(data): # TODO
     self = data.get('self') # cliente. duh
     user_id = data.get('uid') #l a base de datos nos guarda por id
     text = data.get('text') # Body
