@@ -6,13 +6,17 @@ import traceback
 import sys
 import json
 import aiohttp
-from bs4 import BeautifulSoup
+import logging
 
 from . import room_events
 from . import room as group
+from . import constants
 from .exceptions import InvalidRoom
+from . import utils
 
-import logging
+from bs4 import BeautifulSoup
+
+cookie_jar = aiohttp.CookieJar(unsafe=False)
 
 class WS:
     def __init__(self, client):
@@ -20,10 +24,8 @@ class WS:
         self._ws = None
         self._client = client
         self._first_time = True
-        self.url = "chat.roxvent.com"
-        self._login_url = f'https://{self.url}/user/login/'
-        self._ws_url = f'wss://{self.url}/ws/room/{self.name}/'
-        self._room_url = f'https://{self.url}/room/{self.name}/'
+        self._listen_task = None
+        self._recv_task = None
         self._headers = {}
         self.logger = None
 
@@ -34,17 +36,26 @@ class WS:
     @property
     def client(self):
         return self._client
+    
+    async def _send_command(self, command):
+        if self._ws and not self._ws.closed:
+            await self._ws.send_json(command)
 
+    async def close_session(self):
+        if self._session:
+            await self._session.close()
+            
     async def listen_websocket(self):
         async with self._session as session:
-            async with session.ws_connect(self._ws_url, headers=self.headers) as ws:
+            async with session.ws_connect(constants.ws_url+f'{self.name}/', headers=self._headers) as ws:
                 if int(self.client.debug) <= 2:
                     logging.info(f"[info] {self.name} Websocket connection success!")
-                asyncio.create_task(self.receive_messages(ws))
+                self._recv_task = await asyncio.create_task(self.receive_messages(ws))
                 while True:
                     try:
-                        await asyncio.sleep(60)
+                        await asyncio.sleep(0) # give control to async
                     except asyncio.CancelledError: break
+                    except ConnectionResetError: pass
 
     async def receive_messages(self, ws):
         self._ws = ws
@@ -56,9 +67,8 @@ class WS:
             except AssertionError: pass
             except asyncio.CancelledError: break
             except ConnectionResetError:
-                if int(self.client.debug) <= 2:
-                    logging.info(f"[info] {self.name} Websocket connection was reset.")
-            
+                logging.info(f"[info] {self.name} Websocket connection was reset.")
+
     async def _process_cmd(self, data):
         data = json.loads(data)
         cmd = data.get('cmd')
@@ -77,80 +87,69 @@ class WS:
         else:
             logging.warning("Unhandled received command", cmd, kwargs)
     
-    async def _send_command(self, command):
-        if self._ws and not self._ws.closed:
-            await self._ws.send_json(command)
-
-    async def close_session(self):
-        if self._session:
-            await self._session.close()
-
-    def generate_header(self):
-        key = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(16)).encode('utf-8')
-        headers = {
-            'Connection': 'keep-alive, Upgrade',
-            'Accept-Encoding': 'gzip, deflate, br',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Origin': f'https://{self.url}',
-            'Sec-WebSocket-Version': '13',
-            'Sec-WebSocket-Extensions': 'permessage-deflate',
-            'Sec-WebSocket-Key': base64.b64encode(key).decode('utf-8'),
-            'Sec-Fetch-Dest': 'empty',
-            'Sec-Fetch-Mode': 'websocket',
-            'Sec-Fetch-Site': 'same-origin',
-            'Pragma': 'no-cache',
-            'Cache-Control': 'no-cache',
-            'Upgrade': 'websocket',
-        }
-        return headers
-    
     async def _connect(self, anon=False):
-        self.headers = self.generate_header()
-        self.cookie_jar = aiohttp.CookieJar(unsafe=False)
-        self._session = aiohttp.ClientSession(cookie_jar=self.cookie_jar, headers={'referer': self._login_url})
+        """
+        function that supposed to connect.
+        """
+        if not self._session:
+            self._headers = utils.generate_header()
+            self._session = aiohttp.ClientSession(cookie_jar=cookie_jar, headers={'referer': constants.login_url})
+        if not self._is_cookie_valid():
+            login, token = await self._login()
+            ecode = await self._parse_data(login, token)
+            if ecode == 200: logging.info("[info] [ws] Login success...")
+            if ecode == 201: logging.info("[info] [ws] Login as anon success...")
+            if ecode == 202: logging.info("[info] [ws] Incorrect Password...")
+        if await utils.is_room_valid(self._session, self.name) == True:
+            self._listen_task = await asyncio.create_task(self.listen_websocket())
+        else:
+            await self._client.leave_room(self.name)
+            raise InvalidRoom("The room doesn't exist.")
 
-        response = await self._session.get(self._login_url)
-        isvalid = None
+    async def _parse_data(self, data, token):
+        """
+        supposed to parse data
+        """
+        soup = BeautifulSoup(data, 'html.parser')
+        invalid_passwd = soup.find('ul', class_='messages')
+        if not self._client._password: 
+            ecode = 201
+        if invalid_passwd is not None:
+            invalid_passwd = invalid_passwd.find('li', class_='warning')
+        if invalid_passwd:
+            ecode = 202
+        else:
+            session_id_value = None
+            for cookie in self._session.cookie_jar:
+                if cookie.key == 'sessionid':
+                    session_id_value = cookie.value
+                    break
+            if session_id_value:
+                ecode = 200
+                self._headers['Cookie']=f"csrftoken={token}; sessionid={session_id_value}"
+        return ecode
+
+    async def _login(self, username: str = "", password: str = ""):
+        """
+        a fuction that can login, or maybe. 
+        """
+        response = await self._session.get(constants.login_url)
         if response.status == 200:
             page_content = await response.text()
             soup = BeautifulSoup(page_content, 'html.parser')
             csrf_token = soup.find('input', {'name': 'csrfmiddlewaretoken'})['value']
             login_data = {
                 'csrfmiddlewaretoken': csrf_token,
-                'username': self._client._username,
-                'password': self._client._password,
+                'username': username or self._client._username,
+                'password': password or self._client._password,
             }
-            get_login = await self._session.post(self._login_url, data=login_data, headers={'referer': self._login_url})
-            html_login = await get_login.text()
-            soup = BeautifulSoup(html_login, 'html.parser')
-            invalid_passwd = soup.find('ul', class_='messages')
-            if not self._client._password: 
-                ecode = 201
-            if invalid_passwd is not None:
-                invalid_passwd = invalid_passwd.find('li', class_='warning')
-            if invalid_passwd:
-                ecode = 202
-            else:
-                room_valid = await self._session.get(self._room_url, headers={'referer': self._login_url})
-                soup = BeautifulSoup(await room_valid.text(), 'html.parser')
-                isvalid = soup.find('button', {'class': 'btn btn-primary'})
-                session_id_value = None
-                for cookie in self._session.cookie_jar:
-                    if cookie.key == 'sessionid':
-                        session_id_value = cookie.value
-                        break
-                if session_id_value:
-                    ecode = 200
-                    self.headers['Cookie']=f"csrftoken={csrf_token}; sessionid={session_id_value}"
-            
-            if self._client.debug <= 1:    
-                if ecode == 200: logging.info("[info] [ws] Login success...")
-                if ecode == 201: logging.info("[info] [ws] Login as anon success...")
-                if ecode == 202: logging.info("[info] [ws] Incorrect Password...")
-            if isvalid == None:
-                Tasks = [asyncio.create_task(self.listen_websocket())]
-                asyncio.gather(*Tasks)
-            else:
-                await self._client.leave_room(self.name)
-                raise InvalidRoom("The room doesn't exist.")
-            
+            get_login = await self._session.post(constants.login_url, data=login_data, headers={'referer': constants.login_url})
+            login = await get_login.text()
+            return (login, csrf_token)
+    
+    def _is_cookie_valid(self):
+        for cookie in cookie_jar:
+            if cookie.key == 'sessionid':
+                return True
+        return False
+    

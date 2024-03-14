@@ -1,4 +1,5 @@
 from .user import User
+from .utils import public_attributes
 
 class Message(object):  # base
     def __init__(self):
@@ -11,9 +12,7 @@ class Message(object):  # base
         self._device = str()
 
     def __dir__(self):
-        return [x for x in
-                set(list(self.__dict__.keys()) + list(dir(type(self)))) if
-                x[0] != '_']
+        return public_attributes(self)
 
     def __repr__(self):
         return "<Message>"
