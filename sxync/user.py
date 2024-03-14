@@ -1,6 +1,6 @@
 import aiohttp
 from collections import deque
-from .utils import cleanText
+from .utils import cleanText, public_attributes
 
 class User: 
     _users = {}
@@ -37,10 +37,8 @@ class User:
         return User._users.get(name) or User(name)
 
     def __dir__(self):
-        return [x for x in
-                set(list(self.__dict__.keys()) + list(dir(type(self)))) if
-                x[0] != '_']
-
+        return public_attributes(self)
+    
     def __repr__(self):
         return "<User: %s>" % self.name
     
