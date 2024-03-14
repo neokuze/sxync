@@ -14,6 +14,7 @@ class Room(WS):
         self._userlist = {}
         self._log_as_anon = anon
         self._misc = {}
+        self._user = None
         super().__init__(client) # debe estar al final para cargar lo demas.
         
     @property
@@ -24,6 +25,9 @@ class Room(WS):
     def misc(self):
         return self._misc
         
+    @property
+    def user(self):
+        return self._user
         
     async def send_msg(self, text, quote=None):
         msg = text if quote == None else f"{quote}{text}"
