@@ -1,3 +1,4 @@
+import html
 from collections import deque
 from .connection import WS
 from .utils import cleanText, public_attributes
@@ -34,7 +35,7 @@ class Room(WS):
         
     async def send_msg(self, text, quote=None):
         msg = text if quote == None else f"{quote}{text}"
-        await self._send_command({"cmd":"message","kwargs":{"text":msg,"target":self.name}})
+        await self._send_command({"cmd":"message","kwargs":{"text": msg,"target":self.name}})
         
     def find_user_by_id(self, args):
         return [(x.id,x.name) for x in self._userlist if x.id == int(args)]
@@ -49,7 +50,6 @@ class Room(WS):
     
     def get_last_message(self, user_name: str):
         clean_user = self.find_user_by_name(user_name)
-        print(clean_user)
         user_messages = [msg for msg in self.history if msg.user.id == clean_user[0]]
         if user_messages:
             return user_messages[0]

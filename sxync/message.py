@@ -37,7 +37,6 @@ class Message(object):  # base
     def raw(self):
         return self._raw
 
-    
 class RoomBase(Message):
     def __init__(self):
         self._id = None
@@ -49,7 +48,7 @@ class RoomBase(Message):
 def _process_room_msg(mid, room, user_id, text, msg_time, raw = None, ip=None, dev=None):
     msg = RoomBase()
     if int(user_id) < 0 and raw:
-        anon_name = raw.get('username_custom')
+        anon_name = "Anon"
         msg._user = User(int(user_id), name=anon_name.lower(), isanon=True, showname=anon_name)
     else:
         msg._user = User(int(user_id))

@@ -3,6 +3,8 @@ import asyncio
 from .message import _process_room_msg
 from .user import User
 
+async def on_writing(data):pass
+
 async def on_ok(data):
     """
     proper use of room data.
@@ -14,7 +16,7 @@ async def on_ok(data):
     chn = data.get('channel')
     self._user = User(user_info.get('uid'))
     self._misc = dict(ip=ip,user_agent=user_agent,channel=chn)
-    
+
 async def on_connect(data):
     self = data.get('self')
     await self._send_command({"cmd":"get_userlist","kwargs":{"target":self.name}})
@@ -24,7 +26,7 @@ async def on_connect(data):
 async def on_update_user_counter(data): #TODO maybe change
     self = data.get('self')
     self._usercounter = data.get('number')
-    
+
 async def on_message(data): # TODO
     self = data.get('self') # cliente. duh
     user_id = data.get('uid') #l a base de datos nos guarda por id
@@ -36,7 +38,7 @@ async def on_message(data): # TODO
     msg = _process_room_msg(mid, self, user_id, text, msg_time, data, ip, dev)
     self._mqueue[int(mid)] = msg
     await self.client._call_event("message", msg)
-    
+
 async def on_userlist(data):
     """
     proper use of userlist
@@ -48,11 +50,10 @@ async def on_userlist(data):
         user = User(user_data.get('uid'))
         sessions_active = user_data.get('active')
         join_time = user_data.get('join')
-        t = [ user.get_data(self._session), asyncio.sleep(0)]
+        t = [ user.get_data(), asyncio.sleep(0)]
         asyncio.gather(*t)
     if 'count' in data: self._usercounter = data.get('count')
-    
-    
+
 async def on_join(data):
     """
     {'uid': 30, 'sessions': 1, 'usercount': 3, 'join': '2024-03-14T01:23:59.549Z'}
@@ -63,13 +64,13 @@ async def on_join(data):
     active = data.get('sessions')
     join_time = data.get('join')
     if not user._name and data.get('uid') >=1: 
-        await user.get_data(self._session)
+        await user.get_data()
     if user not in self._userlist:
         self._userlist[user] = {'sessions':1, 'time': join_time}
     else:
         self._userlist[user]['sessions'] = active
     await self.client._call_event("join_user", self, user, join_time)
-    
+
 async def on_leave(data):
     """
     {'uid': 1, 'sessions': 0, 'usercount': 3}
@@ -82,8 +83,7 @@ async def on_leave(data):
         self._userlist[user]['sessions'] = sessions
     self._usercounter = usercount
     await self.client._call_event("leave_user", self, user)
-    
-    
+
 async def on_history(data):
     mlist = data.get('messages')
     self = data.get('self')
@@ -97,5 +97,3 @@ async def on_history(data):
             msg = _process_room_msg(msg_id, self, user, text, _time)
             self._mqueue[int(msg_id)] = msg
         
-
-async def on_writing(data):pass

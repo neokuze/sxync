@@ -1,13 +1,12 @@
 import aiohttp
 from collections import deque
-from .utils import cleanText, public_attributes
+from .utils import cleanText, public_attributes, get_aiohttp_session
 
 class User: 
     _users = {}
 
     def __new__(cls, userid, **kwargs):
-        if type(userid) == type(int(0)):
-            key = f"user_{userid}"
+        key = f"user_{userid}"
         if key in cls._users:
             for attr, val in kwargs.items():
                 setattr(cls._users[key], '_' + attr, val)
@@ -61,7 +60,7 @@ class User:
     async def get_data(self, session):
         lurl = "https://chat.roxvent.com/user/login/"
         url = f"https://chat.roxvent.com/user/API/get_data/?id={self.id}"
-        async with session.get(url, headers={'referer': lurl}) as resp:
+        async with get_aiohttp_session().get(url, headers={'referer': lurl}) as resp:
             data = await resp.json()
             result = data.get('reason')
             if result == "PROFILE FOUND":
