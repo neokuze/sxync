@@ -57,7 +57,7 @@ class User:
     def isanon(self):
         return self._isanon
     
-    async def get_data(self, session):
+    async def get_data(self):
         lurl = "https://chat.roxvent.com/user/login/"
         url = f"https://chat.roxvent.com/user/API/get_data/?id={self.id}"
         async with get_aiohttp_session().get(url, headers={'referer': lurl}) as resp:
