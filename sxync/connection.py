@@ -110,4 +110,4 @@ class WS:
         if Jar.success:
             self._headers['Cookie']=f"csrftoken={Jar.csrftoken}; sessionid={Jar.session_id_value}"
             return True
-        return False    
+        raise InvalidPasswd("Invalid Password")
