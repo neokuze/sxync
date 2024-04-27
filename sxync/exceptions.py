@@ -3,3 +3,6 @@ class AlreadyConnected(Exception):
 
 class InvalidRoom(Exception):
     pass
+    
+class InvalidPasswd(Exception):
+    pass
