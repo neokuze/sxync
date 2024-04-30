@@ -16,11 +16,6 @@ async def on_ok(data):
     chn = data.get('channel')
     self._user = User(user_info.get('uid'))
     self._misc = dict(ip=ip,user_agent=user_agent,channel=chn)
-
-async def on_connect(data):
-    self = data.get('self')
-    await self._send_command({"cmd":"get_userlist","kwargs":{"target":self.name}})
-    await self._send_command({"cmd":"get_history","kwargs":{"target":self.name}})
     await self.client._call_event("connect", self)
 
 async def on_update_user_counter(data): #TODO maybe change

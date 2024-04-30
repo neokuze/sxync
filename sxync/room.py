@@ -7,28 +7,29 @@ class Room(WS):
     def __init__(self, name, client, anon=False):
         self._name = name
         self._client = client
+        self.reset()
+        self._log_as_anon = anon
+        self._user = None
+        super().__init__(client) # debe estar al final para cargar lo demas.
+
+    def reset(self):
         self._usercounter = 0
         self._users = {}
         self._anons = []
         self._history = []
         self._mqueue = {}
-        self._userlist = {}
-        self._log_as_anon = anon
-        self._misc = {}
-        self._user = None
-        super().__init__(client) # debe estar al final para cargar lo demas.
+        self._userlist = {}   
 
     def __dir__(self):
         return public_attributes(self)
+    
+    def __repr__(self):
+        return "[room: %s]"% self._name
         
     @property
     def name(self):
-        return self._name
-        
-    @property
-    def misc(self):
-        return self._misc
-        
+        return self._name     
+
     @property
     def user(self):
         return self._user
@@ -55,6 +56,11 @@ class Room(WS):
             return user_messages[0]
         else:
             return None
+
+    async def init(self):
+        await self._send_command({"cmd":"get_userlist","kwargs":{"target":self.name}})
+        await self._send_command({"cmd":"get_history","kwargs":{"target":self.name}})
+
 
     
 class RoomFlags:

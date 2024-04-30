@@ -25,6 +25,9 @@ class Bot(EventHandler):
         self._running = None
         self._forever = forever
     
+    def __repr__(self):
+        return "[client]"
+
     def __dir__(self):
         return public_attributes(self)
     

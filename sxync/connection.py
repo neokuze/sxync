@@ -21,7 +21,6 @@ class WS:
         self._session = None
         self._ws = None
         self._client = client
-        self._first_time = True
         self._listen_task = None
         self._process_task = None
         self._headers = {}
@@ -29,6 +28,9 @@ class WS:
         self._auto_reconnect = None
         self._transport = None
         self._type = _type
+
+    def __repr__(self):
+        return "[ws: %s]"% self._name
 
     @property
     def name(self):
@@ -55,8 +57,10 @@ class WS:
             except Exception as e:
                 logging.error(f"Error al conectar al WebSocket: {e}")
                 return
+            self.reset()
+            await self.init() #/ sure of getting data everytime it reconnects.
             try:
-                while True: # / while for receiving data.
+                while True: # / while for receiving data? do
                     msg = await self._ws.receive(timeout=60.0)
                     if msg.type == aiohttp.WSMsgType.TEXT:
                         await self._receive_message(json.loads(msg.data))
@@ -75,6 +79,7 @@ class WS:
                     break
                 if self._auto_reconnect:
                     await asyncio.sleep(5)
+        await self._call_event("disconnect", self)
 
     async def _receive_message(self, msg):
         async def process_cmd(msg):
@@ -83,10 +88,6 @@ class WS:
                 kwargs = msg.get('kwargs') or {}
                 kwargs = {'self': self} | kwargs  # python3.9 =>
                 events = room_events if self._type == 'room' else None
-                if self._first_time:
-                    args = {'self': self}
-                    self._first_time = False
-                    await getattr(events, f"on_connect",)(args)
                 if hasattr(events, f"on_{cmd}"):
                     try:
                         await getattr(events, f"on_{cmd}",)(kwargs)
@@ -106,7 +107,7 @@ class WS:
         """
         if not self._session:
             self._session = utils.get_aiohttp_session()
-        room = {"GET": f"/ws/room/{self.name}/ HTTP/1.1"}
+        room = {"GET": f"/ws/{self.type}/{self.name}/ HTTP/1.1"}
         self._headers = room | utils.generate_header()
         if not anon:
             if self.client._Jar.success == None: await self._login()
@@ -124,12 +125,13 @@ class WS:
             else:
                 raise InvalidPasswd("Invalid Password")
 
-    def cancel(self):
+    def cancel(self, unwarn=False):
         self._auto_reconnect = False
         self._listen_task.cancel()
 
     async def disconnect(self, reconnect=None):
-        self.cancel()
+        self.cancel(reconnect)
         await self._close_session()
         if reconnect:
             await self._connect()
+            self._call_event("reconnect", self)
