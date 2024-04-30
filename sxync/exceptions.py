@@ -3,6 +3,9 @@ class AlreadyConnected(Exception):
 
 class InvalidRoom(Exception):
     pass
-    
+
 class InvalidPasswd(Exception):
+    pass
+
+class WebSocketClosure(Exception):
     pass
