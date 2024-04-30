@@ -8,7 +8,7 @@ import json
 import aiohttp
 import logging
 
-from . import room_events
+from . import room_events, pm_events
 from . import room as group
 from . import constants
 from .exceptions import InvalidRoom, InvalidPasswd, WebSocketClosure
@@ -17,7 +17,7 @@ from . import utils
 from aiohttp.http_websocket import WSCloseCode
 
 class WS:
-    def __init__(self, client, max_workers=10, _type="room"):
+    def __init__(self, client, max_workers=10):
         self._session = None
         self._ws = None
         self._client = client
@@ -27,11 +27,10 @@ class WS:
         self.logger = None
         self._auto_reconnect = None
         self._transport = None
-        self._type = _type
+
 
     def __repr__(self):
         return "[ws: %s]"% self._name
-
     @property
     def name(self):
         return self._name
@@ -70,7 +69,10 @@ class WS:
                     elif msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.CLOSING, aiohttp.WSMsgType.CLOSE):
                         logging.debug('Received %s', msg)
                         raise WebSocketClosure
-            except (ConnectionResetError, asyncio.TimeoutError, WebSocketClosure) as e:
+            except (ConnectionResetError, asyncio.TimeoutError, WebSocketClosure, asyncio.CancelledError) as e:
+                if isinstance(e, asyncio.CancelledError):
+                    logging.debug("WebSocket listener task cancelled")
+                    break
                 if self._ws and self._ws.closed:
                     errorname = {code: name for name, code in WSCloseCode.__members__.items()}
                     logging.error("[WS] {}: {}".format(self.name, errorname[self._ws.close_code]))
@@ -87,7 +89,7 @@ class WS:
                 cmd = msg.get('cmd')
                 kwargs = msg.get('kwargs') or {}
                 kwargs = {'self': self} | kwargs  # python3.9 =>
-                events = room_events if self._type == 'room' else None
+                events = room_events if self._type == 'room' else pm_events
                 if hasattr(events, f"on_{cmd}"):
                     try:
                         await getattr(events, f"on_{cmd}",)(kwargs)
@@ -125,13 +127,18 @@ class WS:
             else:
                 raise InvalidPasswd("Invalid Password")
 
-    def cancel(self, unwarn=False):
+    def cancel(self):
         self._auto_reconnect = False
-        self._listen_task.cancel()
+        if self._listen_task is not None:
+            self._listen_task.cancel()
 
     async def disconnect(self, reconnect=None):
-        self.cancel(reconnect)
+        if self._listen_task and not self._listen_task.cancelled() and not self._listen_task.done():
+            self._listen_task.cancel()
         await self._close_session()
         if reconnect:
+            self._auto_reconnect = True  # Establece auto_reconnect a True antes de reconectar
             await self._connect()
             self._call_event("reconnect", self)
+        else:
+            self._auto_reconnect = False

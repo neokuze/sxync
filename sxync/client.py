@@ -11,11 +11,13 @@ from .exceptions import AlreadyConnected, InvalidRoom
 from .handler import EventHandler
 from .utils import public_attributes, is_room_valid, Jar, _fetch_html
 from . import constants
+from .private_messaging import PM
 
 class Bot(EventHandler):
     def __init__(self, username, password, rooms=[], forever=True):
         self._username = username
         self._password = password
+        self.pm = None
         self._Jar = Jar(username, password)
         self.debug = 1
         self._rooms = rooms
@@ -50,6 +52,7 @@ class Bot(EventHandler):
         login = await _fetch_html(constants.login_url, headers={})
         self._Jar.get(login)
         self.running = True
+        self.join_pm()
         for room_name in self._rooms:
             self.join_room(room_name)
         await self._call_event("start")
@@ -88,3 +91,19 @@ class Bot(EventHandler):
             
     def get_room(self, room_name: str):
         return self._watching_rooms.get(room_name)
+    
+    def join_pm(self):
+        if not self._username or not self._password:
+            logger.error("PM requires username and password.")
+            return
+
+        self.add_task(self._watch_pm())
+
+    async def _watch_pm(self):
+        pm = PM(None, self)
+        self.pm = pm
+        await pm._connect()
+
+    def leave_pm(self):
+        if self.pm:
+            self.add_task(self.pm.disconnect())

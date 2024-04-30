@@ -4,12 +4,13 @@ from .connection import WS
 from .utils import cleanText, public_attributes
 
 class Room(WS):
-    def __init__(self, name, client, anon=False):
+    def __init__(self, name, client,anon=False):
         self._name = name
         self._client = client
-        self.reset()
+        self._type = 'room'
         self._log_as_anon = anon
         self._user = None
+        self.reset()
         super().__init__(client) # debe estar al final para cargar lo demas.
 
     def reset(self):
@@ -19,6 +20,12 @@ class Room(WS):
         self._history = []
         self._mqueue = {}
         self._userlist = {}   
+
+
+    @property
+    def type(self):
+        return self._type
+
 
     def __dir__(self):
         return public_attributes(self)
@@ -62,6 +69,5 @@ class Room(WS):
         await self._send_command({"cmd":"get_history","kwargs":{"target":self.name}})
 
 
-    
 class RoomFlags:
     pass
