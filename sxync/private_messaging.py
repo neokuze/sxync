@@ -2,11 +2,14 @@ from .connection import WS
 from .utils import public_attributes
 
 class PM(WS):
-    def __init__(self, name, client):
-        self._name = name
+    def __init__(self, client):
+        self._name = int()
         self._client = client
         self._user = None
         self._type = 'pm'
+        self._channel = None
+        self._user_agent = None
+        self._uid = int()
         self.reset()
         super().__init__(client) # debe estar al final para cargar lo demas.
 
@@ -14,12 +17,11 @@ class PM(WS):
         self._history = []
         self._mqueue = {}
         self._friends = {}
- 
-
+        self._recent_rooms = []
+        
     @property
     def type(self):
         return self._type
-
 
     def __dir__(self):
         return public_attributes(self)

@@ -100,7 +100,7 @@ class Bot(EventHandler):
         self.add_task(self._watch_pm())
 
     async def _watch_pm(self):
-        pm = PM(None, self)
+        pm = PM(self)
         self.pm = pm
         await pm._connect()
 

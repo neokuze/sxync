@@ -1,4 +1,4 @@
-import html
+import html as html2
 from collections import deque
 from .connection import WS
 from .utils import cleanText, public_attributes
@@ -41,8 +41,8 @@ class Room(WS):
     def user(self):
         return self._user
         
-    async def send_msg(self, text, quote=None):
-        msg = text if quote == None else f"{quote}{text}"
+    async def send_msg(self, text, html=False):
+        msg = html2.unescape(text) if html else html2.escape(text)
         await self._send_command({"cmd":"message","kwargs":{"text": msg,"target":self.name}})
         
     def find_user_by_id(self, args):
