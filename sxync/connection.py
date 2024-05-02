@@ -43,9 +43,9 @@ class WS:
     async def _send_command(self, command):
         await self._ws.send_json(command)
 
-    def _close_session(self):
+    async def _close_session(self):
         if self._ws:
-            self._ws.close()
+            await self._ws.close()
     
     async def _listen_websocket(self):
         self._auto_reconnect = True
@@ -138,7 +138,7 @@ class WS:
 
 
     async def disconnect(self, reconnect=None):
-        self._close_session()
+        await self._close_session()
         if reconnect:
             await self._connect()
             await self._client._call_event("reconnect", self)
