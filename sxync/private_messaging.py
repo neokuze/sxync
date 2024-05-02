@@ -18,7 +18,7 @@ class PM(WS):
         self._mqueue = {}
         self._friends = {}
         self._recent_rooms = []
-        
+
     @property
     def type(self):
         return self._type
@@ -37,7 +37,7 @@ class PM(WS):
     def user(self):
         return self._user
 
-    async def init(self):
+    async def _init(self):
         await self._send_command({"cmd":"get_updates","kwargs":{"target":24}})
         await self._send_command({"cmd":"get_rooms","kwargs":{"target":24}})
         await self._send_command({"cmd":"get_recent","kwargs":{"target":24}})

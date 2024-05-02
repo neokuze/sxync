@@ -13,8 +13,10 @@ from . import room as group
 from . import constants
 from .exceptions import InvalidRoom, InvalidPasswd, WebSocketClosure
 from . import utils
+
 from aiohttp import ClientTimeout
 from aiohttp.http_websocket import WSCloseCode, WebSocketError
+from aiohttp.client_exceptions import ServerDisconnectedError, ServerTimeoutError
 
 class WS:
     def __init__(self, client, max_workers=10):
@@ -22,7 +24,6 @@ class WS:
         self._ws = None
         self._client = client
         self._listen_task = None
-        self._process_task = None
         self._headers = {}
         self.logger = None
         self._auto_reconnect = None
@@ -42,9 +43,9 @@ class WS:
     async def _send_command(self, command):
         await self._ws.send_json(command)
 
-    async def _close_session(self):
+    def _close_session(self):
         if self._ws:
-            await self._ws.close()
+            self._ws.close()
     
     async def _listen_websocket(self):
         self._auto_reconnect = True
@@ -53,28 +54,26 @@ class WS:
                 self._session = aiohttp.ClientSession()
                 peername = "wss://{}/ws/{}/{}/".format(constants.url, self._type, self.name)
                 self._ws = await self._session.ws_connect(peername, headers=self._headers, autoping=True, autoclose=True)
-            except Exception as e:
+            except aiohttp.ClientConnectionError as e:
                 logging.error(f"Error al conectar al WebSocket: {e}")
                 return
-            self.reset()
-            await self.init() #/ sure of getting data everytime it reconnects.
+            self.reset(); await self._init() #/ make sure of getting data every time it connected
             try:
                 timeout = ClientTimeout(sock_connect=300,sock_read=300)
                 while True: # / while for receiving data? do
                     if self._session.closed:
-                        break #/ reconect (?)
+                        raise ServerDisconnectedError #/ reconect (?)
                     msg = await asyncio.wait_for(self._ws.receive(), timeout=timeout.total)
                     if msg.type == aiohttp.WSMsgType.TEXT:
-                        await self._receive_message(json.loads(msg.data))
+                        await self._receive_message(msg.data)
                     elif msg.type is aiohttp.WSMsgType.ERROR:
                         logging.debug('Received error %s', msg)
                         raise WebSocketClosure
                     elif msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.CLOSING, aiohttp.WSMsgType.CLOSE):
                         logging.debug('Received %s', msg)
                         raise WebSocketClosure
-            except (ConnectionResetError, asyncio.TimeoutError, WebSocketClosure, asyncio.CancelledError,
-                    aiohttp.ClientConnectionError, aiohttp.ServerDisconnectedError, WebSocketError,
-                    aiohttp.WSServerHandshakeError, aiohttp.WSClientDisconnectedError) as e:
+            except (ConnectionResetError, ServerTimeoutError, WebSocketClosure,
+                    ServerDisconnectedError, WebSocketError, asyncio.exceptions.CancelledError) as e:
                 if isinstance(e, asyncio.CancelledError):
                     logging.debug("WebSocket listener task cancelled")
                     break
@@ -87,27 +86,26 @@ class WS:
                     await asyncio.sleep(5)
 
         await self.disconnect(reconnect=self._auto_reconnect)
-        await self._call_event("disconnect", self)
+        await self._client._call_event("disconnect", self)
 
     async def _receive_message(self, msg):
-        async def process_cmd(msg):
-            try:
-                cmd = msg.get('cmd')
-                kwargs = msg.get('kwargs') or {}
-                kwargs = {'self': self} | kwargs  # python3.9 =>
-                events = room_events if self._type == 'room' else pm_events
-                if hasattr(events, f"on_{cmd}"):
-                    try:
-                        await getattr(events, f"on_{cmd}",)(kwargs)
-                    except:
-                        logging.error("Error handling command: %s", cmd, exc_info=True)
-                        traceback.print_exc(file=sys.stderr)
-                else:
-                    logging.warning("Unhandled received command", cmd, kwargs)
-            except Exception as e:
-                logging.warning("Unhandled exception in receive_messages", exc_info=True)
-                traceback.print_exc(file=sys.stderr)
-        await process_cmd(msg)
+        data = json.loads(msg)
+        try:
+            cmd = data.get('cmd')
+            kwargs = data.get('kwargs') or {}
+            kwargs = {'self': self} | kwargs  # python3.9 =>
+            events = room_events if self._type == 'room' else pm_events
+            if hasattr(events, f"on_{cmd}"):
+                try:
+                    await getattr(events, f"on_{cmd}",)(kwargs)
+                except:
+                    logging.error("Error handling command: %s", cmd, exc_info=True)
+                    traceback.print_exc(file=sys.stderr)
+            else:
+                logging.warning("Unhandled received command", cmd, kwargs)
+        except Exception as e:
+            logging.warning("Unhandled exception in receive_messages", exc_info=True)
+            traceback.print_exc(file=sys.stderr)
 
     async def _connect(self, anon=False):
         """
@@ -135,13 +133,12 @@ class WS:
 
     def cancel(self):
         self._auto_reconnect = False
-        if self._listen_task is not None:
+        if self._listen_task and not self._listen_task.cancelled() and not self._listen_task.done():
             self._listen_task.cancel()
 
+
     async def disconnect(self, reconnect=None):
-        if self._listen_task and not self._listen_task.cancelled() and not self._listen_task.done():
-            self.cancel()
-        await self._close_session()
+        self._close_session()
         if reconnect:
             await self._connect()
-            self._call_event("reconnect", self)
+            self._client._call_event("reconnect", self)

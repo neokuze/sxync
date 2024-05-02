@@ -8,6 +8,10 @@ class User:
 
     def __new__(cls, userid, **kwargs):
         key = f"user_{userid}"
+        anonymous=False
+        if "-" in str(userid):
+            key = "Anon"+str(userid)[1:]
+            anonymous=True
         if key in cls._users:
             for attr, val in kwargs.items():
                 setattr(cls._users[key], '_' + attr, val)
@@ -19,7 +23,7 @@ class User:
         cls._users[key] = self
         self._name = None
         self._history = deque(maxlen=5)
-        self._isanon = False
+        self._isanon = anonymous
         self._showname = None
         self._client = None
         self._last_time = None
@@ -40,7 +44,7 @@ class User:
         return public_attributes(self)
     
     def __repr__(self):
-        return "<User: %s>" % self.name
+        return "[user: %s]" % self.name
     
     @property
     def id(self):

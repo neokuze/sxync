@@ -15,7 +15,7 @@ class Room(WS):
 
     def reset(self):
         self._usercounter = 0
-        self._users = {}
+        self._users = []
         self._anons = []
         self._history = []
         self._mqueue = {}
@@ -64,7 +64,7 @@ class Room(WS):
         else:
             return None
 
-    async def init(self):
+    async def _init(self):
         await self._send_command({"cmd":"get_userlist","kwargs":{"target":self.name}})
         await self._send_command({"cmd":"get_history","kwargs":{"target":self.name}})
 
