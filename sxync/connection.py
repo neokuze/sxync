@@ -54,7 +54,7 @@ class WS:
                 self._session = aiohttp.ClientSession()
                 peername = "wss://{}/ws/{}/{}/".format(constants.url, self._type, self.name)
                 self._ws = await self._session.ws_connect(peername, headers=self._headers, autoping=True, autoclose=True)
-            except aiohttp.ClientConnectionError as e:
+            except (aiohttp.ClientConnectionError,aiohttp.client_exceptions.WSServerHandshakeError) as e:
                 logging.error(f"Error al conectar al WebSocket: {e}")
                 return
             self.reset(); await self._init() #/ make sure of getting data every time it connected
@@ -141,4 +141,4 @@ class WS:
         self._close_session()
         if reconnect:
             await self._connect()
-            self._client._call_event("reconnect", self)
+            await self._client._call_event("reconnect", self)
