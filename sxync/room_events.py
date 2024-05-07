@@ -2,6 +2,7 @@ import asyncio
 
 from .message import _process_room_msg
 from .user import User
+from .utils import Struct
 
 async def on_writing(data):pass
 
@@ -10,12 +11,11 @@ async def on_ok(data):
     proper use of room data.
     """
     self = data.get('self')
-    user_info = data.get('you')
-    ip_nmethod = user_info.get('info')
-    ip, _, user_agent = ip_nmethod.split(";;")
+    me = data.get('you')
+    client_info = me.get('info')
     chn = data.get('channel')
-    self._user = User(user_info.get('uid'))
-    self._misc = dict(ip=ip,user_agent=user_agent,channel=chn)
+    self._user = User(me.get('uid'))
+    self._info = Struct(**dict(channel=chn, client=client_info))
     await self.client._call_event("connect", self)
 
 async def on_update_user_counter(data): #TODO maybe change

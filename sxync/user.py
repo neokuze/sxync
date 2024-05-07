@@ -21,7 +21,7 @@ class User:
         self._key = key
         self._id = int(f"{userid}")
         cls._users[key] = self
-        self._name = None
+        self._name = None if not anonymous else key
         self._history = deque(maxlen=5)
         self._isanon = anonymous
         self._showname = None

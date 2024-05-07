@@ -14,6 +14,7 @@ class Room(WS):
         super().__init__(client) # debe estar al final para cargar lo demas.
 
     def reset(self):
+        self._info = str()
         self._usercounter = 0
         self._users = []
         self._anons = []
@@ -40,6 +41,10 @@ class Room(WS):
     @property
     def user(self):
         return self._user
+
+    @property
+    def info(self):
+        return self._info
         
     async def send_msg(self, text, html=False):
         msg = html2.unescape(text) if html else html2.escape(text)

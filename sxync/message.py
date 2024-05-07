@@ -15,7 +15,7 @@ class Message(object):  # base
         return public_attributes(self)
 
     def __repr__(self):
-        return "<Message>"
+        return "[Message]"
 
     @property
     def user(self):

@@ -2,14 +2,16 @@ import asyncio
 import typing
 import inspect
 import logging
+import time
 
+import aiohttp
 from typing import Coroutine, List, Union
 from asyncio import Future, Task
 
 from .room import Room
 from .exceptions import AlreadyConnected, InvalidRoom
 from .handler import EventHandler
-from .utils import public_attributes, is_room_valid, Jar, _fetch_html
+from .utils import public_attributes, is_room_valid, Jar
 from . import constants
 from .private_messaging import PM
 
@@ -47,12 +49,12 @@ class Bot(EventHandler):
             if forever:
                 await asyncio.sleep(0.1)
 
-    async def start(self, *, forever=False):
+    async def start(self, *, forever=False, pm=False):
         await self._call_event("init")
-        login = await _fetch_html(constants.login_url, headers={})
-        self._Jar.get(login)
+        await self._get_new_session()
         self.running = True
-        self.join_pm()
+        if pm:
+            self.join_pm()
         for room_name in self._rooms:
             self.join_room(room_name)
         await self._call_event("start")
@@ -94,7 +96,7 @@ class Bot(EventHandler):
     
     def join_pm(self):
         if not self._username or not self._password:
-            logger.error("PM requires username and password.")
+            logging.error("PM requires username and password.")
             return
 
         self.add_task(self._watch_pm())
@@ -107,3 +109,10 @@ class Bot(EventHandler):
     def leave_pm(self):
         if self.pm:
             self.add_task(self.pm.disconnect())
+
+    async def _get_new_session(self):
+        if self._Jar._counter <= time.time():
+            self._Jar._counter = time.time() + self._Jar._limit
+            while True:
+                session = await self._Jar.get_new_session()
+                if session: break

@@ -34,6 +34,8 @@ def generate_header():
     key = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(16)).encode('utf-8')
     headers = {
        'Connection': 'keep-alive, Upgrade',
+       'Accept': '*/*',
+       'Accept-Language': 'en-US,en;q=0.5',
        'Accept-Encoding': 'gzip, deflate, br',
        "Host": constants.url,
        'Origin': f'https://{constants.url}',
@@ -41,6 +43,9 @@ def generate_header():
        'Sec-WebSocket-Extensions': 'permessage-deflate',
        'Sec-WebSocket-Key': base64.b64encode(key).decode('utf-8'),
        'Sec-Fetch-Site': 'empty',
+       'Sec-Fetch-Mode': 'websocket',
+       'Sec-Fetch-Site': 'same-origin',
+       'Sec-GPC': '1',
        'Upgrade': 'websocket'}
     return headers
     
@@ -96,6 +101,8 @@ class Jar:
         self._default_user_name = username
         self._default_password = password
         self._success = None
+        self._limit = 70
+        self._counter= 0
 
     def __repr__(self):
         return "[Jar]"
@@ -144,3 +151,18 @@ class Jar:
                 break
             except (aiohttp.client_exceptions.ServerDisconnectedError) as e:
                 await asyncio.sleep(5)
+
+    async def get_new_session(self):
+        try:
+            login = await _fetch_html(constants.login_url, headers={'referer': constants.login_url})
+            self.get(login)
+            return True
+        except aiohttp.client_exceptions.ClientConnectorError:
+            await asyncio.sleep(5) #/try again
+            return False
+
+class Struct:
+    def __init__(self, **entries):
+        self.__dict__.update(entries)
+    def __dir__(self):
+        return public_attributes(self)

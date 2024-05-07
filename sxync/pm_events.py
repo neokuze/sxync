@@ -11,4 +11,6 @@ async def on_ok(data):
 
 async def on_recent_rooms(data):
     self = data.get('self')
-    self._recent_rooms = data['kwargs']['recent']
+    # self._recent_rooms = data['kwargs']['recent']
+
+async def on_unknown(data):pass

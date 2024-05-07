@@ -41,7 +41,8 @@ class WS:
         return self._client
 
     async def _send_command(self, command):
-        await self._ws.send_json(command)
+        if self._ws and not self._ws.closed:
+            await self._ws.send_json(command)
 
     async def _close_session(self):
         if self._ws:
@@ -51,10 +52,13 @@ class WS:
         self._auto_reconnect = True
         while self._auto_reconnect:
             try:
-                self._session = aiohttp.ClientSession()
+                headers={'referer': constants.login_url} | self._headers
+                self._session = aiohttp.ClientSession(headers=headers)
                 peername = "wss://{}/ws/{}/{}/".format(constants.url, self._type, self.name)
-                self._ws = await self._session.ws_connect(peername, headers=self._headers, autoping=True, autoclose=True)
-            except (aiohttp.ClientConnectionError,aiohttp.client_exceptions.WSServerHandshakeError) as e:
+                self._ws = await self._session.ws_connect(peername, headers=headers, compress=15)
+            except (aiohttp.client_exceptions.ClientConnectorError,
+                aiohttp.client_exceptions.WSServerHandshakeError
+                ) as e:
                 logging.error(f"Error al conectar al WebSocket: {e}")
                 return
             self.reset(); await self._init() #/ make sure of getting data every time it connected
@@ -72,15 +76,21 @@ class WS:
                     elif msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.CLOSING, aiohttp.WSMsgType.CLOSE):
                         logging.debug('Received %s', msg)
                         raise WebSocketClosure
-            except (ConnectionResetError, ServerTimeoutError, WebSocketClosure,
-                    ServerDisconnectedError, WebSocketError, asyncio.exceptions.CancelledError) as e:
+            except (ConnectionResetError, WebSocketClosure, asyncio.exceptions.CancelledError,
+                ServerDisconnectedError, WebSocketError
+            ) as e:
                 if isinstance(e, asyncio.CancelledError):
                     logging.debug("WebSocket listener task cancelled")
                     break
                 if self._ws and self._ws.closed:
                     errorname = {code: name for name, code in WSCloseCode.__members__.items()}
                     logging.error("[WS] {}: {}".format(self.name, errorname[self._ws.close_code]))
+                    if errorname[self._ws.close_code] == WSCloseCode.SERVICE_RESTART:
+                        await self._client._get_new_session()
                     break
+            except (asyncio.TimeoutError, ServerTimeoutError):
+                await asyncio.sleep(10)
+                break
             finally:
                 if self._auto_reconnect:
                     await asyncio.sleep(5)
