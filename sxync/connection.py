@@ -19,7 +19,7 @@ from aiohttp.http_websocket import WSCloseCode, WebSocketError
 from aiohttp.client_exceptions import ServerDisconnectedError, ServerTimeoutError
 
 class WS:
-    def __init__(self, client, max_workers=10):
+    def __init__(self, client):
         self._session = None
         self._ws = None
         self._client = client
@@ -95,7 +95,7 @@ class WS:
                 if self._auto_reconnect:
                     await asyncio.sleep(5)
 
-        await self.disconnect(reconnect=self._auto_reconnect)
+        await self._disconnect(reconnect=self._auto_reconnect)
         await self._client._call_event("disconnect", self)
 
     async def _receive_message(self, msg):
@@ -147,7 +147,7 @@ class WS:
             self._listen_task.cancel()
 
 
-    async def disconnect(self, reconnect=None):
+    async def _disconnect(self, reconnect=None):
         await self._close_session()
         if reconnect:
             await self._connect()
