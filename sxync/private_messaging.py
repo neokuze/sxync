@@ -7,6 +7,7 @@ class PM(WS):
         self._client = client
         self._user = None
         self._type = 'pm'
+        self._limit = 500
         self._channel = None
         self._user_agent = None
         self._uid = int()

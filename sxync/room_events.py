@@ -33,6 +33,9 @@ async def on_message(data): # TODO
     msg = _process_room_msg(mid, self, user_id, text, msg_time, data, ip, dev)
     self._mqueue[int(mid)] = msg
     await self.client._call_event("message", msg)
+    if len(self._mqueue) > self._limit:
+        oldest_mid = sorted(self._mqueue.keys())[0]
+        del self._mqueue[oldest_mid]
 
 async def on_userlist(data):
     """
@@ -46,8 +49,6 @@ async def on_userlist(data):
         sessions_active = user_data.get('active')
         join_time = user_data.get('join')
         self._userlist[user] = {'sessions': sessions_active, 'join':join_time}
-        if user not in self._users: self._users.append(user)
-        if user not in self._anons and user._isanon: self._anons.append(user)
         t = [ user.get_data(), asyncio.sleep(0)]
         asyncio.gather(*t)
     if 'count' in data: self._usercounter = data.get('count')
@@ -67,8 +68,6 @@ async def on_join(data):
         self._userlist[user] = {'sessions':1, 'time': join_time}
     else:
         self._userlist[user]['sessions'] = active
-    if user not in self._users: self._users.append(user)
-    if user not in self._anons and user._isanon: self._anons.append(user)
     await self.client._call_event("join_user", self, user, join_time)
 
 async def on_leave(data):
@@ -81,10 +80,6 @@ async def on_leave(data):
     usercount = data.get('usercount')
     if user in self._userlist:
         self._userlist[user]['sessions'] = sessions
-        if sessions == 0:
-            if user._isanon:
-                self._anons.remove(user)
-            self._users.remove(user)
     self._usercounter = usercount
     await self.client._call_event("leave_user", self, user)
 
@@ -105,5 +100,5 @@ async def on_delete_message(data):
     self = data.get('self')
     msgid = data.get('msgid')
     if data.get('result') == "OK": #eliminar de mi vista
-        del self._mqueue[msgid]
+        del self._mqueue[int(msgid)]
 

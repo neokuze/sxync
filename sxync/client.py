@@ -37,7 +37,7 @@ class Bot(EventHandler):
     
     @property
     def rooms(self):
-        return list(self._tasks.keys())
+        return list(self._watching_rooms.keys())
 
     def _prune_tasks(self):
         self._tasks = [task for task in self._tasks if not task.done()]
@@ -61,9 +61,9 @@ class Bot(EventHandler):
         await self._task_loop(self._forever)
 
     def stop_all(self):
-        for ws in list(self._watching_rooms.keys()):
-            room = self.get_room(ws)
-            self.add_task(room.cancel())
+        for room_name in self.rooms:
+            room = self.get_room(room_name)
+            task = room.cancel()
         self._running = False
         
     def join_room(self, room_name) -> None:

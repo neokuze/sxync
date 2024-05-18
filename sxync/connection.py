@@ -150,6 +150,7 @@ class WS:
 
     async def _disconnect(self, reconnect=None):
         await self._close_session()
+        self.cancel()
         if reconnect:
             await self._connect()
             await self._client._call_event("reconnect", self)

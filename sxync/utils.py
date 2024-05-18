@@ -107,6 +107,9 @@ class Jar:
     def __repr__(self):
         return "[Jar]"
 
+    def __dir__(self):
+        return public_attributes(self)
+
     @property
     def success(self):
         return self._success
