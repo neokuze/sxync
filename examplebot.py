@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import asyncio
 import time
+import sys
 import sxync
 
 class config:
@@ -54,4 +55,6 @@ try:
 except KeyboardInterrupt:
     print("[KeyboardInterrupt] Killed bot.")
 finally:
-    loop.run_until_complete(bot.stop_all())
+    #loop.run_until_complete(cfg.save_all())
+    loop.close()
+    sys.exit()
