@@ -7,9 +7,21 @@ import sxync
 class config:
     prefix = ["!"]
     botuser = ["us3rname", "password_0f_bot"] # user_name, password
-    rooms = ['sudoers']
+    rooms = ['examplegroup']
 
 class Super(sxync.client.Bot):
+    async def on_init(self):
+        pass # init something here
+
+    async def on_connect(self, room):
+        print(f"[info] Joining {room.name}.")
+
+    async def on_disconnect(self, room):
+        print(f"[info] Leaving {room.name}.")
+
+    async def on_reconnect(self, room):
+        print(f"[info] Reconnecting in {room.name}.")
+
     async def on_message(self, message):
         user = f"{message.user.showname if message.user.showname is None else message.user.name}"
         print(time.strftime("%b/%d-%H:%M:%S", time.localtime(message.time)),
@@ -27,11 +39,11 @@ class Super(sxync.client.Bot):
         else: 
             use_prefix = False
         if use_prefix:
-            if cmd in ['hello', 'test', 'a']:
+            if cmd in ['id']:
+                await message.room.send_msg(f"You are {message.user.id}") 
+            elif cmd in ['hello', 'test', 'a']:
                 await message.room.send_msg(f"Hello {user}") #user must me be handle by id.
-
-    async def on_connect(self, room):
-        print(f"[info] Estoy conectado en {room.name}.")
+            
 
 bot = Super(config.botuser[0], config.botuser[1], config.rooms)
 
