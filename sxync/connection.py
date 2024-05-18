@@ -61,7 +61,8 @@ class WS:
                 ) as e:
                 logging.error(f"Error al conectar al WebSocket: {e}")
                 return
-            self.reset(); await self._init() #/ make sure of getting data every time it connected
+            self.reset()
+            await self._init() #/ make sure of getting data every time it connected
             try:
                 timeout = ClientTimeout(sock_connect=300,sock_read=300)
                 while True: # / while for receiving data? do
