@@ -17,7 +17,6 @@ class User:
                 setattr(cls._users[key], '_' + attr, val)
             return cls._users[key]
         self = super().__new__(cls)
-        self._name = None
         self._key = key
         self._id = int(f"{userid}")
         cls._users[key] = self
@@ -76,23 +75,43 @@ class User:
                 
 class Recents:
     def __init__(self, data):
-        self.device = data['info']['device'] if 'info' in data and data['info'] else None
-        self.join_time = data['join_time'].split('.')[0] if 'join_time' in data else None
-        self.left_time = data['left_time'].split('.')[0] if 'left_time' in data else None
-        self.sessions = data.get('sessions', None)
-        self.ip = data.get('ip', None)
+        self._device = data.get('info', {}).get('device', None)
+        self._join_time = data['join_time'].split('.')[0] if 'join_time' in data else None
+        self._left_time = data['left_time'].split('.')[0] if 'left_time' in data else None
+        self._sessions = data.get('sessions', None)
+        self._ip = data.get('ip', None)
 
     def _update(self, data):
         if 'info' in data and data['info']:
-            self.device = data['info'].get('device', None)
+            self._device = data['info'].get('device', None)
         if 'join_time' in data:
-            self.join_time = data['join_time'].split('.')[0]
+            self._join_time = data['join_time'].split('.')[0]
         if 'left_time' in data:
-            self.left_time = data['left_time'].split('.')[0]
+            self._left_time = data['left_time'].split('.')[0]
         if 'sessions' in data:
-            self.sessions = data['sessions']
+            self._sessions = data['sessions']
         if 'ip' in data:
-            self.ip = data['ip']
+            self._ip = data['ip']
 
     def __dir__(self):
         return public_attributes(self)
+
+    @property
+    def device(self):
+        return self._device
+
+    @property
+    def join_time(self):
+        return self._join_time
+
+    @property
+    def left_time(self):
+        return self._left_time
+
+    @property
+    def sessions(self):
+        return self._sessions
+
+    @property
+    def ip(self):
+        return self._ip
