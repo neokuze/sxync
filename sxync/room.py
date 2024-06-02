@@ -56,48 +56,47 @@ class Room(WS):
     async def send_msg(self, text, html=False):
         msg = html2.unescape(text) if html else html2.escape(text)
         await self._send_command({"cmd":"message","kwargs":{"text": msg,"target":self.name}})
-        
-    def find_user_by_id(self, args):
-        return [(x.id,x.name) for x in self._userlist if x.id == int(args)]
-    
-    def find_user_by_name(self, args):
-        return [x.id for x in self._userlist if x.name.lower() == args.lower()]
-    
+
+    def get_user(self, username: str):
+        exist = [x for x in self._userlist if x._showname.lower() == username.lower()]
+        if exist:
+            return exist[0]
+        return None
+
     @property
     def history(self):
         self._history = sorted(self._mqueue.items(), key=lambda x: x[0], reverse=True)
         return [msg for id, msg in self._history]
     
     def get_last_message(self, user_name: str):
-        clean_user = self.find_user_by_name(user_name)
-        user_messages = [msg for msg in self.history if msg.user.id == clean_user[0]]
-        if user_messages:
-            return user_messages[0]
-        else:
-            return None
+        user = self.get_user(user_name)
+        if user:
+            user_messages = [msg for msg in self.history if msg.user.id == user.id]
+            if user_messages:
+                return user_messages[0]
+            return False
+        return None
 
     def _filter_userlist(self, active: bool, anon: bool = None) -> List:
-        return [
-            user for user, recents in self._userlist.items()
-            if (recents.sessions if active else not recents.sessions) and 
-               (user.isanon if anon is not None else True) == anon
-        ]
+        if anon != None:
+            return [
+                user for user, recents in self._userlist.items()
+                if (recents.sessions if active else not recents.sessions) and 
+                (user.isanon if anon is not None else True) == anon
+            ]
+        else: # should show inactive with both 
+            return [
+                user for user, recents in self._userlist.items()
+                if (recents.sessions if active else not recents.sessions) 
+            ]
 
     def _alluserlist(self, _filter: str='all', active: bool=True) -> List:
-        if _filter == 'all':
-            return [x for x in self._userlist]
         anon = None
         if _filter == 'anons':
             anon = True
         elif _filter == 'users':
             anon = False
         return self._filter_userlist(active, anon)
-
-    def get_user(self, username: str):
-        exist = [x for x in self._userlist if x._showname == username]
-        if exist:
-            return exist[0]
-        return None
 
     @property
     def alluserlist(self) -> List:
@@ -110,4 +109,9 @@ class Room(WS):
     @property
     def userlist(self) -> List:
         return self._alluserlist('users')
+    
+    @property
+    def recents(self) -> List:
+        return self._alluserlist('all', False)
+
     

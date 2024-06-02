@@ -20,10 +20,6 @@ async def on_ok(data):
     self._info = Struct("ClientInfo", **dict(channel=chn, client=client_info))
     await self.client._call_event("connect", self)
 
-async def on_update_user_counter(data): #TODO maybe change
-    self = data.get('self')
-    self._usercounter = data.get('number')
-
 async def on_message(data): # TODO
     self = data.get('self') # cliente. duh
     user_id = data.get('uid') #l a base de datos nos guarda por id
@@ -44,7 +40,6 @@ async def on_userlist(data):
     proper use of userlist
     """
     self = data.get('self') 
-    self._userlist.clear()
     ul = data.get('userlist')
     for user_data in ul:
         user = User(user_data.get('uid'))
@@ -127,5 +122,7 @@ async def on_recent_users(data):
             user = User(obj.get('uid'))
             if user not in self._userlist:
                 self._userlist[user] = Recents(obj)
+                t = [ user.get_data(), asyncio.sleep(0)]
+                asyncio.gather(*t)
             else:
                 self._userlist[user]._update(obj)
