@@ -86,7 +86,7 @@ class WS:
                 if self._ws and self._ws.closed:
                     errorname = {code: name for name, code in WSCloseCode.__members__.items()}
                     logging.error("[WS] {}: {}".format(self.name, errorname[self._ws.close_code]))
-                    if errorname[self._ws.close_code] == WSCloseCode.SERVICE_RESTART:
+                    if errorname[self._ws.close_code] in [WSCloseCode.SERVICE_RESTART, WSCloseCode.ABNORMAL_CLOSURE]:
                         await self._client._get_new_session()
                     break
             except (asyncio.TimeoutError, ServerTimeoutError):

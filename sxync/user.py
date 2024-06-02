@@ -10,7 +10,7 @@ class User:
         key = f"user_{userid}"
         anonymous=False
         if "-" in str(userid):
-            key = "Anon"+str(userid)[1:]
+            key = "Anon "+str(userid)[1:]
             anonymous=True
         if key in cls._users:
             for attr, val in kwargs.items():
@@ -21,7 +21,7 @@ class User:
         self._key = key
         self._id = int(f"{userid}")
         cls._users[key] = self
-        self._name = None if not anonymous else key
+        self._name = key
         self._history = deque(maxlen=5)
         self._isanon = anonymous
         self._showname = None
@@ -74,3 +74,25 @@ class User:
                 self._banner = result['banner']
                 self._profile_img = result['image']
                 
+class Recents:
+    def __init__(self, data):
+        self.device = data['info']['device'] if 'info' in data and data['info'] else None
+        self.join_time = data.get('join_time', None)
+        self.left_time = data.get('left_time', None)
+        self.sessions = data.get('sessions', None)
+        self.ip = data.get('ip', None)
+
+    def _update(self, data):
+        if 'info' in data and data['info']:
+            self.device = data['info'].get('device', None)
+        if 'join_time' in data:
+            self.join_time = data['join_time']
+        if 'left_time' in data:
+            self.left_time = data['left_time']
+        if 'sessions' in data:
+            self.sessions = data['sessions']
+        if 'ip' in data:
+            self.ip = data['ip']
+
+    def __dir__(self):
+        return public_attributes(self)

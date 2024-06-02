@@ -9,6 +9,8 @@ from typing import Callable, Any, Awaitable
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 
 class EventHandler:
+    def __repr__(self):
+        return "[EventHandler]"
     async def on_event(self, event: str, *args: typing.Any, **kwargs: typing.Dict[str, typing.Any]):
         if len(args) == 0:
              args_section = ""

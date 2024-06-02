@@ -1,4 +1,4 @@
-__version__ = "1.1.6b"
+__version__ = "1.1.7b"
 from . import client
 from . import connection
 from . import room_events
@@ -10,3 +10,4 @@ from . import handler
 from . import pm_events
 from . import private_messaging
 from . import utils
+from . import flags

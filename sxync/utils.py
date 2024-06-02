@@ -37,15 +37,11 @@ def generate_header():
        'Accept': '*/*',
        'Accept-Language': 'en-US,en;q=0.5',
        'Accept-Encoding': 'gzip, deflate, br',
-       "Host": constants.url,
+       'Host': constants.url,
        'Origin': f'https://{constants.url}',
        'Sec-WebSocket-Version': '13',
        'Sec-WebSocket-Extensions': 'permessage-deflate',
        'Sec-WebSocket-Key': base64.b64encode(key).decode('utf-8'),
-       'Sec-Fetch-Site': 'empty',
-       'Sec-Fetch-Mode': 'websocket',
-       'Sec-Fetch-Site': 'same-origin',
-       'Sec-GPC': '1',
        'Upgrade': 'websocket'}
     return headers
     
@@ -165,7 +161,12 @@ class Jar:
             return False
 
 class Struct:
-    def __init__(self, **entries):
+    def __init__(self, struct_name, **entries):
+        self._name = struct_name
         self.__dict__.update(entries)
+
     def __dir__(self):
         return public_attributes(self)
+
+    def __repr__(self):
+        return f"<{self._name}>"

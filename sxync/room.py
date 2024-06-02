@@ -16,6 +16,7 @@ class Room(WS):
         super().__init__(client) # debe estar al final para cargar lo demas.
 
     def reset(self):
+        self._permissions = object()
         self._info = str()
         self._usercounter = 0
         self._history = []
@@ -39,6 +40,10 @@ class Room(WS):
     @property
     def user(self):
         return self._user
+
+    @property
+    def permissions(self):
+        return self._permissions
 
     @property
     def info(self):
@@ -71,35 +76,22 @@ class Room(WS):
         else:
             return None
 
-    def _get_active_userlist(self) -> List:
-        return [x for x in self._userlist if self._userlist[x]['sessions']]
-
-    def _get_inactive_userlist(self) -> List:
-        return [x for x in self._userlist if not self._userlist[x]['sessions']]
+    def _filter_userlist(self, active: bool, anon: bool = None) -> List:
+        return [
+            user for user, recents in self._userlist.items()
+            if (recents.sessions if active else not recents.sessions) and 
+               (user.isanon if anon is not None else True) == anon
+        ]
 
     def alluserlist(self, _filter: str='all', active: bool=True) -> List:
-        if active:
-            if _filter == 'anons':
-                return [x for x in self._get_active_userlist() if x.isanon]
-            elif _filter == 'users': 
-                return [x for x in self._get_active_userlist() if not x.isanon]
-            else:
-                return [x for x in self._get_active_userlist()]
-        else:
-            if _filter == 'anons':
-                return [x for x in self._get_inactive_userlist() if x.isanon]
-            elif _filter == 'users': 
-                return [x for x in self._get_inactive_userlist() if not x.isanon]
-            else:
-                return [x for x in self._get_inactive_userlist()]
-
-    def get_user_sessions(self, user:str = "", by = "id") -> List:
-        if by == "id":
-            return [x for x in self._userlist.items() if x[0].id == int(user)]
-        if by == "name":
-            return [x for x in self._userlist.items() if x[0].name.lower() == user.lower()]
-        else:
-            return [x for x in self._userlist.items()]
+        if _filter == 'all':
+            return [x for x in self._userlist]
+        anon = None
+        if _filter == 'anons':
+            anon = True
+        elif _filter == 'users':
+            anon = False
+        return self._filter_userlist(active, anon)
 
     @property
     def anonlist(self) -> List:
@@ -108,7 +100,4 @@ class Room(WS):
     @property
     def userlist(self) -> List:
         return self.alluserlist('users')
-        
-
-class RoomFlags:
-    pass
+    

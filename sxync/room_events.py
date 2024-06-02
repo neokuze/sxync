@@ -1,8 +1,10 @@
 import asyncio
 
 from .message import _process_room_msg
-from .user import User
+from .user import User, Recents 
 from .utils import Struct
+
+from .flags import RoomFlags
 
 async def on_writing(data):pass
 
@@ -15,7 +17,7 @@ async def on_ok(data):
     client_info = me.get('info')
     chn = data.get('channel')
     self._user = User(me.get('uid'))
-    self._info = Struct(**dict(channel=chn, client=client_info))
+    self._info = Struct("ClientInfo", **dict(channel=chn, client=client_info))
     await self.client._call_event("connect", self)
 
 async def on_update_user_counter(data): #TODO maybe change
@@ -46,9 +48,9 @@ async def on_userlist(data):
     ul = data.get('userlist')
     for user_data in ul:
         user = User(user_data.get('uid'))
-        sessions_active = user_data.get('active')
+        sessions = user_data.get('active')
         join_time = user_data.get('join')
-        self._userlist[user] = {'sessions': sessions_active, 'join':join_time}
+        self._userlist[user] = Recents({'sessions': sessions, 'join_time':join_time})
         t = [ user.get_data(), asyncio.sleep(0)]
         asyncio.gather(*t)
     if 'count' in data: self._usercounter = data.get('count')
@@ -65,9 +67,9 @@ async def on_join(data):
     if not user._name and data.get('uid') >=1: 
         await user.get_data()
     if user not in self._userlist:
-        self._userlist[user] = {'sessions':1, 'time': join_time}
+        self._userlist[user] = Recents({'sessions':1, 'join_time': join_time})
     else:
-        self._userlist[user]['sessions'] = active
+        self._userlist[user]._update(dict(join_time=join_time, sessions=active))
     await self.client._call_event("join_user", self, user, join_time)
 
 async def on_leave(data):
@@ -79,7 +81,7 @@ async def on_leave(data):
     sessions = data.get('sessions')
     usercount = data.get('usercount')
     if user in self._userlist:
-        self._userlist[user]['sessions'] = sessions
+        self._userlist[user]._update(data)
     self._usercounter = usercount
     await self.client._call_event("leave_user", self, user)
 
@@ -102,3 +104,27 @@ async def on_delete_message(data):
     if data.get('result') == "OK": #eliminar de mi vista
         del self._mqueue[int(msgid)]
 
+async def on_permissions(data):
+    """
+    'BANEABLE': True, 'IS_MOD': False, 'IS_OWNER': 0, 'DELETE_MESSAGES': 0, 'DELETE_OWN_MESSAGES': 0, 
+    'DUMMY': 0, 'DELETE_ALL_MESSAGES': 0, 'EDIT_OWN_MESSAGES': 0, 'ROOM_INFO': 0, 'ROOM_SETTINGS': 0,
+    'ROOM_RESTRICTIONS': 0, 'FLAG_USER': 0, 'SEE_IPS': 0, 'BAN_USERS': 0, 'UNBAN_USERS': 0, 'ADD_MOD': 0, 'CHANGE_MODS': 0, 'flag': 0})
+    """
+    self = data.get('self')
+    permissions_data = {k: v for k, v in data.items() if k != 'self'}
+    self._permissions = RoomFlags(permissions_data)
+
+async def on_recent_users(data):
+    """
+    'recent': [{'uid': -181, 'info': {'device': 'Mobile'}, 'join_time': '2024-05-29T19:53:42.512Z', 'left_time': '2024-05-29T19:58:17.540Z', 'ip': ''},
+    """
+    self = data.get('self')
+    recent = data.get('recent')
+    print(self, data)
+    if recent:
+        for obj in recent:
+            user = User(obj.get('uid'))
+            if user not in self._userlist:
+                self._userlist[user] = Recents(obj)
+            else:
+                self._userlist[user]._update(obj)
