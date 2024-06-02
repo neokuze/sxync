@@ -96,6 +96,9 @@ class Recents:
     def __dir__(self):
         return public_attributes(self)
 
+    def __repr__(self):
+        return f"<{self.__class__.__name__}>"
+
     @property
     def device(self):
         return self._device
