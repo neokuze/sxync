@@ -83,7 +83,7 @@ class Room(WS):
                (user.isanon if anon is not None else True) == anon
         ]
 
-    def alluserlist(self, _filter: str='all', active: bool=True) -> List:
+    def _alluserlist(self, _filter: str='all', active: bool=True) -> List:
         if _filter == 'all':
             return [x for x in self._userlist]
         anon = None
@@ -93,11 +93,21 @@ class Room(WS):
             anon = False
         return self._filter_userlist(active, anon)
 
+    def get_user(self, username: str):
+        exist = [x for x in self._userlist if x._showname == username]
+        if exist:
+            return exist[0]
+        return None
+
+    @property
+    def alluserlist(self) -> List:
+        return self._alluserlist()
+
     @property
     def anonlist(self) -> List:
-        return self.alluserlist('anons')
+        return self._alluserlist('anons')
 
     @property
     def userlist(self) -> List:
-        return self.alluserlist('users')
+        return self._alluserlist('users')
     

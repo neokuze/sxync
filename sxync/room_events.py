@@ -1,9 +1,9 @@
 import asyncio
+from datetime import datetime, timezone
 
 from .message import _process_room_msg
 from .user import User, Recents 
 from .utils import Struct
-
 from .flags import RoomFlags
 
 async def on_writing(data):pass
@@ -49,7 +49,7 @@ async def on_userlist(data):
     for user_data in ul:
         user = User(user_data.get('uid'))
         sessions = user_data.get('active')
-        join_time = user_data.get('join')
+        join_time = user_data.get('join').split('.')[0]
         self._userlist[user] = Recents({'sessions': sessions, 'join_time':join_time})
         t = [ user.get_data(), asyncio.sleep(0)]
         asyncio.gather(*t)
@@ -63,7 +63,7 @@ async def on_join(data):
     self = data.get('self')
     user = User(data.get('uid'))
     active = data.get('sessions')
-    join_time = data.get('join')
+    join_time = data.get('join').split('.')[0]
     if not user._name and data.get('uid') >=1: 
         await user.get_data()
     if user not in self._userlist:
@@ -80,8 +80,10 @@ async def on_leave(data):
     user = User(data.get('uid'))
     sessions = data.get('sessions')
     usercount = data.get('usercount')
+    now = datetime.now(timezone.utc)
+    iso_format = now.replace(microsecond=0).isoformat().split('+')[0].split('.')[0]
     if user in self._userlist:
-        self._userlist[user]._update(data)
+        self._userlist[user]._update(data|{'left_time': iso_format})
     self._usercounter = usercount
     await self.client._call_event("leave_user", self, user)
 
