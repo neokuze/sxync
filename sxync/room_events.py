@@ -120,7 +120,6 @@ async def on_recent_users(data):
     """
     self = data.get('self')
     recent = data.get('recent')
-    print(self, data)
     if recent:
         for obj in recent:
             user = User(obj.get('uid'))
