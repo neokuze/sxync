@@ -10,7 +10,7 @@ class User:
         key = f"user_{userid}"
         anonymous=False
         if "-" in str(userid):
-            key = "Anon "+str(userid)[1:]
+            key = "Anon"+str(userid)
             anonymous=True
         if key in cls._users:
             for attr, val in kwargs.items():
@@ -23,7 +23,7 @@ class User:
         self._name = key
         self._history = deque(maxlen=5)
         self._isanon = anonymous
-        self._showname = None
+        self._showname = None or key.replace('-', ' ')
         self._client = None
         self._last_time = None
         self._banner = None
@@ -33,7 +33,7 @@ class User:
         for attr, val in kwargs.items():
             setattr(self, '_' + attr, val)
         return self
-    
+
     def get(name):
         if type(name) == type(int(0)):
             name = f"user_{name}"
@@ -41,37 +41,38 @@ class User:
 
     def __dir__(self):
         return public_attributes(self)
-    
+
     def __repr__(self):
-        return "[user: %s]" % self.name
-    
+        return "[user: %s]" % self.showname
+
     @property
     def id(self):
         return int(self._id)
-    
+
     @property
     def showname(self):
         return self._showname
-    
+
     @property
     def name(self):
         return self._name
-    
+
     @property
     def isanon(self):
         return self._isanon
-    
+
     async def get_data(self):
-        url = f"https://chat.roxvent.com/user/API/get_data/?id={self.id}"
-        async with get_aiohttp_session().get(url, headers={'referer': constants.login_url}) as resp:
-            data = await resp.json()
-            result = data.get('reason')
-            if result == "PROFILE FOUND":
-                result = data.get('profile')
-                self._name = cleanText(result['custom'])
-                self._showname = result['custom']
-                self._banner = result['banner']
-                self._profile_img = result['image']
+        if not self.isanon:
+            url = f"https://chat.roxvent.com/user/API/get_data/?id={self.id}"
+            async with get_aiohttp_session().get(url, headers={'referer': constants.login_url}) as resp:
+                data = await resp.json()
+                result = data.get('reason')
+                if result == "PROFILE FOUND":
+                    result = data.get('profile')
+                    self._name = cleanText(result['custom'])
+                    self._showname = result['custom']
+                    self._banner = result['banner']
+                    self._profile_img = result['image']
                 
 class Recents:
     def __init__(self, data):

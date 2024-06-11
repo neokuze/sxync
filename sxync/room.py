@@ -58,7 +58,7 @@ class Room(WS):
         await self._send_command({"cmd":"message","kwargs":{"text": msg,"target":self.name}})
 
     def get_user(self, username: str):
-        exist = [x for x in self._userlist if x._showname.lower() == username.lower()]
+        exist = [x for x in self._userlist if x.showname.lower() == username.lower()]
         if exist:
             return exist[0]
         return None

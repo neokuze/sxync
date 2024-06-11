@@ -2,11 +2,13 @@ import asyncio
 from datetime import datetime, timezone
 
 from .message import _process_room_msg
-from .user import User, Recents 
+from .user import User, Recents
 from .utils import Struct
 from .flags import RoomFlags
 
-async def on_writing(data):pass
+
+async def on_writing(data): pass
+
 
 async def on_ok(data):
     """
@@ -20,14 +22,15 @@ async def on_ok(data):
     self._info = Struct("ClientInfo", **dict(channel=chn, client=client_info))
     await self.client._call_event("connect", self)
 
-async def on_message(data): # TODO
-    self = data.get('self') # cliente. duh
-    user_id = data.get('uid') #l a base de datos nos guarda por id
-    text = data.get('text') # Body
-    msg_time = data.get('time') # Tiempo del mensaje
-    mid =  data.get('mid') # algun tiempo de actividad.
-    ip =  data.get('uip') 
-    dev =  data.get('dev') 
+
+async def on_message(data):  # TODO
+    self = data.get('self')  # cliente. duh
+    user_id = data.get('uid')  # l a base de datos nos guarda por id
+    text = data.get('text')  # Body
+    msg_time = data.get('time')  # Tiempo del mensaje
+    mid = data.get('mid')  # algun tiempo de actividad.
+    ip = data.get('uip')
+    dev = data.get('dev')
     msg = _process_room_msg(mid, self, user_id, text, msg_time, data, ip, dev)
     self._mqueue[int(mid)] = msg
     await self.client._call_event("message", msg)
@@ -35,20 +38,22 @@ async def on_message(data): # TODO
         oldest_mid = sorted(self._mqueue.keys())[0]
         del self._mqueue[oldest_mid]
 
+
 async def on_userlist(data):
     """
     proper use of userlist
     """
-    self = data.get('self') 
+    self = data.get('self')
     ul = data.get('userlist')
     for user_data in ul:
         user = User(user_data.get('uid'))
         sessions = user_data.get('active')
         join_time = user_data.get('join').split('.')[0]
-        self._userlist[user] = Recents({'sessions': sessions, 'join_time':join_time})
-        t = [ user.get_data(), asyncio.sleep(0)]
-        asyncio.gather(*t)
-    if 'count' in data: self._usercounter = data.get('count')
+        self._userlist[user] = Recents(
+            {'sessions': sessions, 'join_time': join_time})
+    if 'count' in data:
+        self._usercounter = data.get('count')
+
 
 async def on_join(data):
     """
@@ -59,28 +64,32 @@ async def on_join(data):
     user = User(data.get('uid'))
     active = data.get('sessions')
     join_time = data.get('join').split('.')[0]
-    if not user._name and data.get('uid') >=1: 
-        await user.get_data()
     if user not in self._userlist:
-        self._userlist[user] = Recents({'sessions':1, 'join_time': join_time})
+        self._userlist[user] = Recents({'sessions': 1, 'join_time': join_time})
+        get_profile = [user.get_data()]
+        asyncio.gather(*get_profile)
     else:
-        self._userlist[user]._update(dict(join_time=join_time, sessions=active))
+        self._userlist[user]._update(
+            dict(join_time=join_time, sessions=active))
     await self.client._call_event("join_user", self, user, join_time)
+
 
 async def on_leave(data):
     """
     {'uid': 1, 'sessions': 0, 'usercount': 3}
     """
-    self = data.get('self') 
+    self = data.get('self')
     user = User(data.get('uid'))
     sessions = data.get('sessions')
     usercount = data.get('usercount')
     now = datetime.now(timezone.utc)
-    iso_format = now.replace(microsecond=0).isoformat().split('+')[0].split('.')[0]
+    iso_format = now.replace(
+        microsecond=0).isoformat().split('+')[0].split('.')[0]
     if user in self._userlist:
-        self._userlist[user]._update(data|{'left_time': iso_format})
+        self._userlist[user]._update(data | {'left_time': iso_format})
     self._usercounter = usercount
     await self.client._call_event("leave_user", self, user)
+
 
 async def on_history(data):
     mlist = data.get('messages')
@@ -95,11 +104,13 @@ async def on_history(data):
             msg = _process_room_msg(msg_id, self, user, text, _time)
             self._mqueue[int(msg_id)] = msg
 
+
 async def on_delete_message(data):
     self = data.get('self')
     msgid = data.get('msgid')
-    if data.get('result') == "OK": #eliminar de mi vista
+    if data.get('result') == "OK":  # eliminar de mi vista
         del self._mqueue[int(msgid)]
+
 
 async def on_permissions(data):
     """
@@ -111,6 +122,7 @@ async def on_permissions(data):
     permissions_data = {k: v for k, v in data.items() if k != 'self'}
     self._permissions = RoomFlags(permissions_data)
 
+
 async def on_recent_users(data):
     """
     'recent': [{'uid': -181, 'info': {'device': 'Mobile'}, 'join_time': '2024-05-29T19:53:42.512Z', 'left_time': '2024-05-29T19:58:17.540Z', 'ip': ''},
@@ -118,11 +130,14 @@ async def on_recent_users(data):
     self = data.get('self')
     recent = data.get('recent')
     if recent:
+        userlist = []
         for obj in recent:
             user = User(obj.get('uid'))
             if user not in self._userlist:
+                userlist.append(user)
                 self._userlist[user] = Recents(obj)
-                t = [ user.get_data(), asyncio.sleep(0)]
-                asyncio.gather(*t)
             else:
                 self._userlist[user]._update(obj)
+        if userlist:
+            get_all_profiles = [user.get_data() for user in userlist]
+            asyncio.gather(*get_all_profiles)

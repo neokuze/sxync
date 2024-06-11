@@ -1,13 +1,13 @@
 import logging
 import inspect
 import typing
-import asyncio
 
-logging.basicConfig(level=logging.ERROR, format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 
 class EventHandler:
     def __repr__(self):
         return "[EventHandler]"
+
     async def on_event(self, event: str, *args: typing.Any, **kwargs: typing.Dict[str, typing.Any]):
         if len(args) == 0:
              args_section = ""
@@ -17,7 +17,6 @@ class EventHandler:
             args_section = repr(args)
         kwargs_section = "" if not kwargs else repr(kwargs)
         logging.getLogger(__name__).debug(f"EVENT {event} {args_section} {kwargs_section}")
-
 
     async def _call_event(self, event: str, *args, **kwargs):
         attr = f"on_{event}"

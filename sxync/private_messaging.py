@@ -1,6 +1,7 @@
 from .connection import WS
 from .utils import public_attributes
 
+
 class PM(WS):
     def __init__(self, client):
         self._name = int()
@@ -12,7 +13,7 @@ class PM(WS):
         self._user_agent = None
         self._uid = int()
         self.reset()
-        super().__init__(client) # debe estar al final para cargar lo demas.
+        super().__init__(client)  # debe estar al final para cargar lo demas.
 
     def reset(self):
         self._history = []
@@ -26,19 +27,19 @@ class PM(WS):
 
     def __dir__(self):
         return public_attributes(self)
-    
+
     def __repr__(self):
-        return "[pm: %s]"% self._name
-        
+        return "[%s: %s]" % (self.__class__.__name__,self._uid)
+
     @property
     def name(self):
-        return self._name     
+        return self._uid
 
     @property
     def user(self):
         return self._user
 
     async def _init(self):
-        await self._send_command({"cmd":"get_updates","kwargs":{"target":24}})
-        await self._send_command({"cmd":"get_rooms","kwargs":{"target":24}})
-        await self._send_command({"cmd":"get_recent","kwargs":{"target":24}})
+        await self._send_command({"cmd": "get_updates", "kwargs": {"target": 24}})
+        await self._send_command({"cmd": "get_rooms", "kwargs": {"target": 24}})
+        await self._send_command({"cmd": "get_recent", "kwargs": {"target": 24}})
