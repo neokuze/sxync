@@ -76,7 +76,7 @@ class User:
                 
 class Recents:
     def __init__(self, data):
-        self._device = data.get('info', {}).get('device', None)
+        self._device = data.get('info', {}).get('device', "")
         self._join_time = data['join_time'].split('.')[0] if 'join_time' in data else None
         self._left_time = data['left_time'].split('.')[0] if 'left_time' in data else None
         self._sessions = data.get('sessions', None)
@@ -84,7 +84,7 @@ class Recents:
 
     def _update(self, data):
         if 'info' in data and data['info']:
-            self._device = data['info'].get('device', None)
+            self._device = data['info'].get('device', "")
         if 'join_time' in data:
             self._join_time = data['join_time'].split('.')[0]
         if 'left_time' in data:

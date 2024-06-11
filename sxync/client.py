@@ -61,6 +61,9 @@ class Bot(EventHandler):
         await self._task_loop(self._forever)
 
     async def stop_all(self):
+        """
+        stop_all is used to force close connections, without adding tasks.
+        """
         for room_name in self.rooms:
             await self._watching_rooms[room_name].close()
             self._watching_rooms.pop(room_name)
@@ -90,6 +93,9 @@ class Bot(EventHandler):
             self._watching_rooms.pop(room_name)
 
     def add_task(self, coro_or_future: Union[Coroutine, Future]):  # TODO
+        """
+        add a task to ensure future.
+        """
         task = asyncio.create_task(coro_or_future)
         self._handle_task(task)
 
@@ -116,6 +122,11 @@ class Bot(EventHandler):
             self.add_task(self.pm.close())
 
     async def _get_new_session(self):
+        """
+        This is called by Connection when the chat restart.
+        Supposed to be called 1 time, generates a new session. 
+        prevents to create more than 1. 
+        """
         if self._Jar._counter <= time.time():
             self._Jar._counter = time.time() + self._Jar._limit
             while True:

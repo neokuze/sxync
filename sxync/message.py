@@ -1,5 +1,6 @@
 from .user import User
 from .utils import public_attributes
+import re
 
 class Message(object):  # base
     def __init__(self):
@@ -36,14 +37,26 @@ class Message(object):  # base
     @property
     def raw(self):
         return self._raw
+    
 
 class RoomBase(Message):
     def __init__(self):
         self._id = None
+        self._mentions = list()
         
-    def quote(self, id=None):
-        if not id: id = self._id
-        return "[quote id={}/]".format(id)
+    @property
+    def mentions(self):
+        return self._mentions
+    
+def mentions(body, room):
+    t = []
+    patron = r"([ \t\n\r\f\v])?@([a-zA-Z0-9áéíóúÁÉÍÓÚñÑ¿!?]{1,20})([ \t\n\r\f\v])?"
+    for match in re.findall(patron, body):
+        for participant in room.alluserlist:
+            if participant.showname.lower() == match[1].lower():
+                if participant not in t:
+                    t.append(participant)
+    return t
     
 def _process_room_msg(mid, room, user_id, text, msg_time, raw = None, ip=None, dev=None):
     msg = RoomBase()
@@ -56,6 +69,7 @@ def _process_room_msg(mid, room, user_id, text, msg_time, raw = None, ip=None, d
     msg._time = msg_time
     msg._raw = str(raw)
     msg._body = str(text)
+    msg._mentions = mentions(msg._body, room)
     msg._id = mid
     msg._ip = ip
     msg._device = dev

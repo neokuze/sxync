@@ -66,7 +66,7 @@ async def on_join(data):
     join_time = data.get('join').split('.')[0]
     if user not in self._userlist:
         self._userlist[user] = Recents({'sessions': 1, 'join_time': join_time})
-        get_profile = [user.get_data()]
+        get_profile = [user.get_data(), asyncio.sleep(0)]
         asyncio.gather(*get_profile)
     else:
         self._userlist[user]._update(
