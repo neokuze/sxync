@@ -4,11 +4,11 @@ from .user import User
 
 async def on_ok(data):
     self = data.get('self')
-    self._name = data.get('target')
-    self._user = User(data.get('target'))
+    self._uid = data['you'].get('uid')
+    self._name = self._uid
+    self._user = User(self._uid)
     self._channel = None
     self._user_agent = data['you'].get('info')
-    self._uid = data['you'].get('uid')
     await self.client._call_event("connect", self)
 
 

@@ -64,7 +64,7 @@ class WS:
                 headers = {'referer': constants.login_url} | self._headers
                 self._session = aiohttp.ClientSession(headers=headers)
                 peername = "wss://{}/ws/{}/{}/".format(
-                    constants.url, self._type, self.name)
+                    constants.url, self._type, self._name)
                 self._ws = await self._session.ws_connect(peername, headers=headers, compress=15)
             except (aiohttp.client_exceptions.ClientConnectorError,
                     aiohttp.client_exceptions.WSServerHandshakeError
@@ -138,7 +138,7 @@ class WS:
         """
         if not self._session:
             self._session = utils.get_aiohttp_session()
-        room = {"GET": f"/ws/{self.type}/{self.name}/ HTTP/1.1"}
+        room = {"GET": f"/ws/{self.type}/{self._name}/ HTTP/1.1"}
         self._headers = room | utils.generate_header()
         if not anon:
             if self.client._Jar.success == None:

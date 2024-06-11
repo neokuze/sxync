@@ -65,7 +65,8 @@ class Bot(EventHandler):
             await self._watching_rooms[room_name].close()
             self._watching_rooms.pop(room_name)
 
-        self.leave_pm()
+        if self.pm:
+            await self.pm.close()
 
         await self._Jar.aiohttp_session.close()
         self._running = False

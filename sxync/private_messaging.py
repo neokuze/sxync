@@ -1,6 +1,6 @@
 from .connection import WS
 from .utils import public_attributes
-
+from .user import User
 
 class PM(WS):
     def __init__(self, client):
@@ -33,13 +33,13 @@ class PM(WS):
 
     @property
     def name(self):
-        return self._uid
+        return "PM: %s" % self.user.showname
 
     @property
     def user(self):
         return self._user
 
     async def _init(self):
-        await self._send_command({"cmd": "get_updates", "kwargs": {"target": 24}})
-        await self._send_command({"cmd": "get_rooms", "kwargs": {"target": 24}})
-        await self._send_command({"cmd": "get_recent", "kwargs": {"target": 24}})
+        await self._send_command({"cmd": "get_updates", "kwargs": {"target": self._uid}})
+        await self._send_command({"cmd": "get_rooms", "kwargs": {"target": self._uid}})
+        await self._send_command({"cmd": "get_recent", "kwargs": {"target": self._uid}})
