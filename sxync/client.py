@@ -65,8 +65,7 @@ class Bot(EventHandler):
             await self._watching_rooms[room_name].close()
             self._watching_rooms.pop(room_name)
 
-        if self.pm:
-            await self.pm.close()
+        self.leave_pm()
 
         await self._Jar.aiohttp_session.close()
         self._running = False
@@ -86,7 +85,7 @@ class Bot(EventHandler):
     def leave_room(self, room_name: str):
         room = self.get_room(room_name)
         if room:
-            self.add_task(room._disconnect())
+            self.add_task(room.close())
             self._watching_rooms.pop(room_name)
 
     def add_task(self, coro_or_future: Union[Coroutine, Future]):  # TODO
@@ -113,7 +112,7 @@ class Bot(EventHandler):
 
     def leave_pm(self):
         if self.pm:
-            self.add_task(self.pm.disconnect())
+            self.add_task(self.pm.close())
 
     async def _get_new_session(self):
         if self._Jar._counter <= time.time():
