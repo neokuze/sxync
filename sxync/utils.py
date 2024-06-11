@@ -143,7 +143,8 @@ class Jar:
         login_data = {
             'csrfmiddlewaretoken': self.csrftoken,
             'username': self._default_user_name,
-            'password': self._default_password}
+            'password': self._default_password
+            }
         while True:
             try:
                 self.html_post = await self.aiohttp_session.post(constants.login_url, data=login_data, headers={'referer': constants.login_url})
@@ -152,8 +153,7 @@ class Jar:
                 match = re.search(pattern, home, re.DOTALL)
                 if match:
                     warn = match.group(1).strip()
-                    logging.warning(f"[Warn] {warn}: {
-                                    self._default_user_name}")
+                    logging.warning("[Warn] {}: {}".format(warn, self._default_user_name))
                 else:  # /login success
                     self.get_session_id()
                 break

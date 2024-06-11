@@ -144,8 +144,8 @@ class WS:
             if self.client._Jar.success == None:
                 await self._login()
             elif self.client._Jar.success == True:
-                self._headers['Cookie'] = f"csrftoken={
-                    self.client._Jar.csrftoken}; sessionid={self.client._Jar.session_id_value}"
+                self._headers['Cookie'] = "csrftoken={}; sessionid={}".format(
+                    self.client._Jar.csrftoken, self.client._Jar.session_id_value)
         # connect (?)
         self._listen_task = asyncio.create_task(self._listen_websocket())
         await self._connection_wait()
@@ -163,8 +163,8 @@ class WS:
         if self.client._password:
             await self.client._Jar.login_post()
             if self.client._Jar.success:
-                self._headers['Cookie'] = f"csrftoken={
-                    self.client._Jar.csrftoken}; sessionid={self.client._Jar.session_id_value}"
+                self._headers['Cookie'] = "csrftoken={}; sessionid={}".format(
+                    self.client._Jar.csrftoken, self.client._Jar.session_id_value)
             else:
                 raise InvalidPasswd("Invalid Password")
 
@@ -174,7 +174,7 @@ class WS:
             await self._connect()
             await self._client._call_event("reconnect", self)
 
-    async def close(self):
+    async def close_connection(self):
         self.cancel()
         await self._disconnect()
         await self._close_session()
