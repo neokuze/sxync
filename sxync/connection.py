@@ -174,7 +174,7 @@ class WS:
             await self._connect()
             await self._client._call_event("reconnect", self)
 
-    async def close_connection(self):
+    async def close(self):
         self.cancel()
         await self._disconnect()
         await self._close_session()
