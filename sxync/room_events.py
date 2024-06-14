@@ -1,7 +1,7 @@
 import asyncio
 from datetime import datetime, timezone
 
-from .message import _process_room_msg
+from .message import _process_room_msg, mentions
 from .user import User, Recents
 from .utils import Struct
 from .flags import RoomFlags
@@ -86,7 +86,8 @@ async def on_leave(data):
     iso_format = now.replace(
         microsecond=0).isoformat().split('+')[0].split('.')[0]
     if user in self._userlist:
-        self._userlist[user]._update(data | {'left_time': iso_format})
+        info = data | dict(left_time=iso_format)
+        self._userlist[user]._update(info)
     self._usercounter = usercount
     await self.client._call_event("leave_user", self, user)
 
@@ -141,3 +142,16 @@ async def on_recent_users(data):
         if userlist:
             get_all_profiles = [user.get_data() for user in userlist]
             asyncio.gather(*get_all_profiles)
+            
+
+async def on_edit_message(data):
+    """
+    ('result': 'OK', 'msgid': 53206, 'text': 'morning o.o/', 'target': ''})
+    """
+    self = data.get('self')
+    result = data.get('result')
+    msgid = data.get('msgid')
+    text = data.get('text')
+    if msgid in self._mqueue and result == "OK":
+        self._mqueue[int(msgid)]._body = str(text)
+        self._mqueue[int(msgid)]._mentions = mentions(text, self)

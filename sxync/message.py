@@ -43,10 +43,16 @@ class RoomBase(Message):
     def __init__(self):
         self._id = None
         self._mentions = list()
+        self._edited = False
         
     @property
     def mentions(self):
         return self._mentions
+    
+    @property
+    def edited(self):
+        return self._edited
+
     
 def mentions(body, room):
     t = []
