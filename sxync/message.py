@@ -44,6 +44,7 @@ class RoomBase(Message):
         self._id = None
         self._mentions = list()
         self._edited = False
+        self._old = ""
         
     @property
     def mentions(self):
@@ -53,6 +54,9 @@ class RoomBase(Message):
     def edited(self):
         return self._edited
 
+    @property
+    def old(self):
+        return None if not self._old else self._old
     
 def mentions(body, room):
     t = []
@@ -80,3 +84,11 @@ def _process_room_msg(mid, room, user_id, text, msg_time, raw = None, ip=None, d
     msg._ip = ip
     msg._device = dev
     return msg
+
+def _process_edited(room, msgid, text):
+    old_body = room._mqueue[int(msgid)]._body
+    room._mqueue[int(msgid)]._old = old_body
+    room._mqueue[int(msgid)]._body = str(text)
+    room._mqueue[int(msgid)]._mentions = mentions(text, room)
+    room._mqueue[int(msgid)]._edited = True
+    return room._mqueue[int(msgid)]

@@ -1,7 +1,7 @@
 import asyncio
 from datetime import datetime, timezone
 
-from .message import _process_room_msg, mentions
+from .message import _process_room_msg, _process_edited
 from .user import User, Recents
 from .utils import Struct
 from .flags import RoomFlags
@@ -153,8 +153,5 @@ async def on_edit_message(data):
     msgid = data.get('msgid')
     text = data.get('text')
     if msgid in self._mqueue and result == "OK":
-        self._mqueue[int(msgid)]._body = str(text)
-        self._mqueue[int(msgid)]._mentions = mentions(text, self)
-        self._mqueue[int(msgid)]._edited = True
-        await self.client._call_event("message_edited", self._mqueue[int(msgid)])
-        
+        msg = _process_edited(self, msgid, text)
+        await self.client._call_event("message_edited", msg)
