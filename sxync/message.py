@@ -38,7 +38,6 @@ class Message(object):  # base
     def raw(self):
         return self._raw
     
-
 class RoomBase(Message):
     def __init__(self):
         self._id = None
@@ -57,6 +56,14 @@ class RoomBase(Message):
     @property
     def old(self):
         return None if not self._old else self._old
+    
+    async def edit(self, text):
+        """
+        {"cmd":"edit_message","kwargs":{"msgid": self._id,"text":"boba","target": self._room}}
+        """
+        await self._room._send_command({"cmd":"edit_message","kwargs":{"msgid": self._id,"text": text,"target": self._room._name}})
+        
+
     
 def mentions(body, room):
     t = []
