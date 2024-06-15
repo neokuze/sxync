@@ -1,4 +1,6 @@
 import aiohttp
+import json
+import logging
 from collections import deque
 from .utils import cleanText, public_attributes, get_aiohttp_session
 from . import constants
@@ -28,8 +30,7 @@ class User:
         self._last_time = None
         self._banner = None
         self._profile_img = None
-        self._ip = None
-        self._dev = None
+        self._fetched_profile = False
         for attr, val in kwargs.items():
             setattr(self, '_' + attr, val)
         return self
@@ -62,18 +63,21 @@ class User:
         return self._isanon
 
     async def get_data(self):
-        if not self.isanon:
+        if self.id > 0:
             url = f"https://chat.roxvent.com/user/API/get_data/?id={self.id}"
-            async with get_aiohttp_session().get(url, headers={'referer': constants.login_url}) as resp:
-                data = await resp.json()
-                result = data.get('reason')
-                if result == "PROFILE FOUND":
-                    result = data.get('profile')
-                    self._name = cleanText(result['custom'])
-                    self._showname = result['custom']
-                    self._banner = result['banner']
-                    self._profile_img = result['image']
-                
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers={'referer': constants.login_url}) as resp:
+                    content = await resp.text()
+                    data = json.loads(content)
+                    result = data.get('reason')
+                    if result == "PROFILE FOUND":
+                        result = data.get('profile')
+                        self._name = cleanText(result['custom'])
+                        self._showname = result['custom']
+                        self._banner = result['banner']
+                        self._profile_img = result['image']
+                        self._fetched_profile = True
+
 class Recents:
     def __init__(self, data):
         self._device = data.get('info', {}).get('device', "")
