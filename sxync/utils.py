@@ -82,7 +82,8 @@ def _is_cookie_valid(cj):
 
 
 async def _fetch_html(url, headers=None):
-    async with get_aiohttp_session().get(url, headers=headers, allow_redirects=False) as response:
+    session = get_aiohttp_session()
+    async with session.get(url, headers=headers, allow_redirects=False) as response:
         response_headers = response.headers
         redirected_url = response_headers.get('Location')
         status_code = response.status
@@ -146,16 +147,16 @@ class Jar:
             'password': self._default_password}
         while True:
             try:
-                self.html_post = await self.aiohttp_session.post(constants.login_url, data=login_data, headers={'referer': constants.login_url})
-                home = await self.html_post.text()
-                pattern = r'<div\s+class="alert alert-danger error">(.*?)</div>'
-                match = re.search(pattern, home, re.DOTALL)
-                if match:
-                    warn = match.group(1).strip()
-                    logging.warning(f"[Warn] {warn}: {self._default_user_name}")
-                else:  # /login success
-                    self.get_session_id()
-                break
+                async with self.aiohttp_session.post(constants.login_url, data=login_data, headers={'referer': constants.login_url}) as resp:
+                    self.html_post = await resp.text()
+                    pattern = r'<div\s+class="alert alert-danger error">(.*?)</div>'
+                    match = re.search(pattern, self.html_post, re.DOTALL)
+                    if match:
+                        warn = match.group(1).strip()
+                        logging.warning(f"[Warn] {warn}: {self._default_user_name}")
+                    else:  # /login success
+                        self.get_session_id()
+                    break
             except (aiohttp.client_exceptions.ServerDisconnectedError) as e:
                 await asyncio.sleep(5)
 
