@@ -18,8 +18,8 @@ from aiohttp import ClientTimeout
 from aiohttp.http_websocket import WSCloseCode, WebSocketError
 from aiohttp.client_exceptions import ServerDisconnectedError, ServerTimeoutError
 
-RECONNECT_TIMEOUT = 8
-INT_TIMEOUT = 10
+RECONNECT_TIMEOUT = 5
+INT_TIMEOUT = 5
 
 
 class WS:
@@ -53,40 +53,43 @@ class WS:
             await self._ws.close()
 
     async def _close_session(self):
-        if self._session != None:
+        if self._session and not self._session.closed:
             await self._session.close()
+            self._session = None
             
-
     async def _listen_websocket(self):
         self._auto_reconnect = True
+        timeout = ClientTimeout(sock_connect=300, sock_read=300)
         while self._auto_reconnect:
             try:
-                headers = {'referer': constants.login_url} | self._headers
-                self._session = aiohttp.ClientSession(headers=headers)
-                peername = "wss://{}/ws/{}/{}/".format(
-                    constants.url, self._type, self._name)
-                self._ws = await self._session.ws_connect(peername, headers=headers, compress=15)
-            except (aiohttp.client_exceptions.ClientConnectorError,
+                try:  
+                    headers = {'referer': constants.login_url} | self._headers
+                    self._session = aiohttp.ClientSession(headers=headers)
+                    peername = "wss://{}/ws/{}/{}/".format(
+                        constants.url, self._type, self._name)
+                    self.reset()
+                    self._ws = await self._session.ws_connect(peername, headers=headers, compress=15)
+                except (aiohttp.client_exceptions.ClientConnectorError,
                     aiohttp.client_exceptions.WSServerHandshakeError
                     ) as e:
-                logging.error(f"Error al conectar al WebSocket: {e}")
-                return
-            self.reset()
-            try:
-                await self._init()  # / make sure of getting data every time it connected
-                timeout = ClientTimeout(sock_connect=300, sock_read=300)
-                while True:  # / while for receiving data? do
-                    if self._session.closed:
-                        raise ServerDisconnectedError  # / reconect (?)
-                    msg = await asyncio.wait_for(self._ws.receive(), timeout=timeout.total)
-                    if msg.type == aiohttp.WSMsgType.TEXT:
-                        await self._receive_message(msg.data)
-                    elif msg.type is aiohttp.WSMsgType.ERROR:
-                        logging.debug('Received error %s', msg)
-                        raise WebSocketClosure
-                    elif msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.CLOSING, aiohttp.WSMsgType.CLOSE):
-                        logging.debug('Received %s', msg)
-                        raise WebSocketClosure
+                    logging.error("Websocket connection Error.")
+                    
+                else:
+                    await self._init()
+                    while True:  # / while for receiving data? do
+                        if self._ws and not self._session.closed :
+                            msg = await asyncio.wait_for(self._ws.receive(), timeout=timeout.total)
+                            if msg.type == aiohttp.WSMsgType.TEXT:
+                                await self._receive_message(msg.data)
+                            elif msg.type is aiohttp.WSMsgType.ERROR:
+                                logging.debug('Received error %s', msg)
+                                raise WebSocketClosure
+                            elif msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.CLOSING, aiohttp.WSMsgType.CLOSE):
+                                logging.debug('Received %s', msg)
+                                raise WebSocketClosure
+                        else:
+                            raise WebSocketClosure
+                        
             except (ConnectionResetError, WebSocketClosure, asyncio.exceptions.CancelledError,
                     ServerDisconnectedError, WebSocketError
                     ) as e:
@@ -96,14 +99,15 @@ class WS:
                 if self._ws and self._ws.closed:
                     errorname = {code: name for name,
                                  code in WSCloseCode.__members__.items()}
-                    logging.error("[WS] {}: {}".format(
-                        self.name, errorname[self._ws.close_code]))
+                    logging.error("[WS] {}: {}".format( self.name, errorname[self._ws.close_code]))
+                    
                     if errorname[self._ws.close_code] in [WSCloseCode.SERVICE_RESTART, WSCloseCode.ABNORMAL_CLOSURE]:
                         await self._client._get_new_session()
                     break
             except (asyncio.TimeoutError, ServerTimeoutError):
                 await asyncio.sleep(INT_TIMEOUT)
                 break
+            
             finally:
                 if self._auto_reconnect:
                     await asyncio.sleep(RECONNECT_TIMEOUT)
@@ -116,7 +120,8 @@ class WS:
         try:
             cmd = data.get('cmd')
             kwargs = data.get('kwargs') or {}
-            kwargs = {'self': self} | kwargs  # python3.9 =>
+            kwargs.update({'self': self})
+            
             events = room_events if self._type == 'room' else pm_events
             if hasattr(events, f"on_{cmd}"):
                 try:
@@ -127,6 +132,7 @@ class WS:
                     traceback.print_exc(file=sys.stderr)
             else:
                 logging.warning("Unhandled received command", cmd, kwargs)
+                
         except Exception as e:
             logging.warning(
                 "Unhandled exception in receive_messages", exc_info=True)
@@ -136,16 +142,19 @@ class WS:
         """
         function that supposed to connect.
         """
-        if not self._session:
-            self._session = utils.get_aiohttp_session()
+        if not self._session or self._session.closed:
+            self._session = aiohttp.ClientSession(headers=self._headers)
+
         room = {"GET": f"/ws/{self.type}/{self._name}/ HTTP/1.1"}
         self._headers = room | utils.generate_header()
         if not anon:
-            if self.client._Jar.success == None:
-                await self._login()
-            elif self.client._Jar.success == True:
+            if self.client._Jar.success is None:
+                 await asyncio.shield(self._login())
+                 
+            elif self.client._Jar.success:
                 self._headers['Cookie'] = "csrftoken={}; sessionid={}".format(
                     self.client._Jar.csrftoken, self.client._Jar.session_id_value)
+
         # connect (?)
         self._listen_task = asyncio.create_task(self._listen_websocket())
         await self._connection_wait()
