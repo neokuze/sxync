@@ -5,19 +5,14 @@ import aiohttp
 import asyncio
 import re
 import socket
-import logging
 
 from . import constants
+from aiohttp.base_protocol import BaseProtocol
+from asyncio import streams, transports, get_event_loop
 
 _aiohttp_session = None
 cookie_jar = aiohttp.CookieJar(unsafe=False)
 
-
-
-def public_attributes(obj):
-    return [
-        x for x in set(list(obj.__dict__.keys()) + list(dir(type(obj)))) if x[0] != "_"
-    ]
 
 def cleanText(text):
     """Regresa texto en minúsculas y sin acentos :> thx linkkg"""
@@ -29,6 +24,12 @@ def cleanText(text):
         if y in text:
             text = text.replace(y, clean[y])
     return text
+
+
+def public_attributes(obj):
+    return [
+        x for x in set(list(obj.__dict__.keys()) + list(dir(type(obj)))) if x[0] != "_"
+    ]
 
 
 def generate_header():
@@ -47,18 +48,17 @@ def generate_header():
         'Upgrade': 'websocket'}
     return headers
 
+
 async def is_room_valid(name):
     """
     an ugly way to check is exist.
     """
-    url = constants.room_url + f"{name}/"
+    url = constants.room_url+f"{name}/"
     headers = {'referer': constants.login_url}
-    async with aiohttp.ClientSession(headers=headers) as session:
-        async with session.get(url, headers=headers) as resp:
-            text = await resp.text()
-            if "Location" in text:
-                return False
-            return True
+    response = await _fetch_html(url, headers={})
+    if response['status_code'] == 302:
+        return False
+    return True
 
 
 def get_aiohttp_session():
@@ -82,20 +82,19 @@ def _is_cookie_valid(cj):
 
 
 async def _fetch_html(url, headers=None):
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, headers=headers, allow_redirects=False) as response:
-            response_headers = response.headers
-            redirected_url = response_headers.get('Location')
-            status_code = response.status
-            html = await response.text()
-            return {
-                'status_code': status_code,
-                'headers': response_headers,
-                'redirected_url': redirected_url,
-                'html': html
-            }
+    async with get_aiohttp_session().get(url, headers=headers, allow_redirects=False) as response:
+        response_headers = response.headers
+        redirected_url = response_headers.get('Location')
+        status_code = response.status
+        html = await response.text()
+        return {
+            'status_code': status_code,
+            'headers': response_headers,
+            'redirected_url': redirected_url,
+            'html': html
+        }
 
-# this session its supposed to never be closed.
+
 class Jar:
     def __init__(self, username, password):
         self.aiohttp_session = get_aiohttp_session()
@@ -144,22 +143,26 @@ class Jar:
         login_data = {
             'csrfmiddlewaretoken': self.csrftoken,
             'username': self._default_user_name,
-            'password': self._default_password
-        }
-        async with get_aiohttp_session().post(constants.login_url, headers={'referer': constants.login_url}, data=login_data) as resp:
-            self.html_post = await resp.text()
-            pattern = r'<div\s+class="alert alert-danger error">(.*?)</div>'
-            match = re.search(pattern, self.html_post, re.DOTALL)
-            if match:
-                warn = match.group(1).strip()
-                logging.warning("[Warn] {}: {}".format(warn, self._default_user_name))
-            else:  # /login success
-                self.get_session_id()
+            'password': self._default_password}
+        while True:
+            try:
+                self.html_post = await self.aiohttp_session.post(constants.login_url, data=login_data, headers={'referer': constants.login_url})
+                home = await self.html_post.text()
+                pattern = r'<div\s+class="alert alert-danger error">(.*?)</div>'
+                match = re.search(pattern, home, re.DOTALL)
+                if match:
+                    warn = match.group(1).strip()
+                    logging.warning(f"[Warn] {warn}: {self._default_user_name}")
+                else:  # /login success
+                    self.get_session_id()
+                break
+            except (aiohttp.client_exceptions.ServerDisconnectedError) as e:
+                await asyncio.sleep(5)
 
     async def get_new_session(self):
         try:
-            login_html = await _fetch_html(constants.login_url, headers={'referer': constants.login_url})
-            self.get(login_html)
+            login = await _fetch_html(constants.login_url, headers={'referer': constants.login_url})
+            self.get(login)
             return True
         except aiohttp.client_exceptions.ClientConnectorError:
             await asyncio.sleep(5)  # /try again
