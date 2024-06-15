@@ -104,7 +104,7 @@ class WS:
                     if errorname[self._ws.close_code] in [WSCloseCode.SERVICE_RESTART, WSCloseCode.ABNORMAL_CLOSURE]:
                         await self._client._get_new_session()
                     break
-            except (asyncio.TimeoutError, ServerTimeoutError):
+            except (asyncio.TimeoutError, ServerTimeoutError, TimeoutError):
                 await asyncio.sleep(INT_TIMEOUT)
                 break
             
@@ -149,7 +149,7 @@ class WS:
         self._headers = room | utils.generate_header()
         if not anon:
             if self.client._Jar.success is None:
-                 await asyncio.shield(self._login())
+                 await self._login()
                  
             elif self.client._Jar.success:
                 self._headers['Cookie'] = "csrftoken={}; sessionid={}".format(
