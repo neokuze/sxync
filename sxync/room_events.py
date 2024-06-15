@@ -11,6 +11,7 @@ async def on_writing(data): pass
 
 
 async def on_ok(data):
+
     """
     proper use of room data.
     """
@@ -20,6 +21,7 @@ async def on_ok(data):
     chn = data.get('channel')
     self._user = User(me.get('uid'))
     self._info = Struct("ClientInfo", **dict(channel=chn, client=client_info))
+    await self._user.get_data()
     await self.client._call_event("connect", self)
 
 
@@ -66,8 +68,9 @@ async def on_join(data):
     join_time = data.get('join').split('.')[0]
     if user not in self._userlist:
         self._userlist[user] = Recents({'sessions': 1, 'join_time': join_time})
-        get_profile = [user.get_data(), asyncio.sleep(0)]
-        asyncio.gather(*get_profile)
+        if not user._fetched_profile and not user.isanon:
+            get_profile = [user.get_data(), asyncio.sleep(0)]
+            asyncio.gather(*get_profile)
     else:
         self._userlist[user]._update(
             dict(join_time=join_time, sessions=active))
@@ -80,13 +83,13 @@ async def on_leave(data):
     """
     self = data.get('self')
     user = User(data.get('uid'))
-    sessions = data.get('sessions')
     usercount = data.get('usercount')
     now = datetime.now(timezone.utc)
     iso_format = now.replace(
         microsecond=0).isoformat().split('+')[0].split('.')[0]
     if user in self._userlist:
-        info = data | dict(left_time=iso_format)
+        info = dict(left_time=iso_format)
+        info.update(data)
         self._userlist[user]._update(info)
     self._usercounter = usercount
     await self.client._call_event("leave_user", self, user)
@@ -135,10 +138,10 @@ async def on_recent_users(data):
         for obj in recent:
             user = User(obj.get('uid'))
             if user not in self._userlist:
-                userlist.append(user)
                 self._userlist[user] = Recents(obj)
             else:
                 self._userlist[user]._update(obj)
+            userlist.append(user)
         if userlist:
             get_all_profiles = [user.get_data() for user in userlist]
             asyncio.gather(*get_all_profiles)
@@ -155,3 +158,16 @@ async def on_edit_message(data):
     if msgid in self._mqueue and result == "OK":
         msg = _process_edited(self, msgid, text)
         await self.client._call_event("message_edited", msg)
+
+async def on_delete_chat(data):
+    self = data.get("self")
+    result = data.get("result")
+    user = User(data.get('uid'))
+    results = True if result == "OK" else False
+    await self.client._call_event("clear", self, user, results)
+
+
+"""
+ {'target': 'sudoers', 'result': 'OK', 'reason': 'ALL MESSAGES DELETED', 'uid': 24, 'self': [room: sudoers]})
+
+"""

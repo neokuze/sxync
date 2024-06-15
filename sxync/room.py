@@ -84,7 +84,7 @@ class Room(WS):
                 if (recents.sessions if active else not recents.sessions) and 
                 (user.isanon if anon is not None else True) == anon
             ]
-        else: # should show inactive with both 
+        else: # should show inactive with both
             return [
                 user for user, recents in self._userlist.items()
                 if (recents.sessions if active else not recents.sessions) 
@@ -114,4 +114,11 @@ class Room(WS):
     def recents(self) -> List:
         return self._alluserlist('all', False)
 
-    
+    async def delete_user(self, username: str):
+        user = self.get_user(username)
+        await self._send_command({"cmd":"delete_user","kwargs":{"uid": user.id, "target":self.name}})
+
+    async def clear_all(self):
+        await self._send_command({"cmd":"delete_chat","kwargs":{"target":self.name}})
+
+
