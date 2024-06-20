@@ -2,7 +2,7 @@ import aiohttp
 import json
 import logging
 from collections import deque
-from .utils import cleanText, public_attributes, get_aiohttp_session
+from .utils import cleanText, public_attributes
 from . import constants
 
 class User: 
@@ -64,7 +64,7 @@ class User:
 
     async def get_data(self):
         if self.id > 0:
-            url = f"https://chat.roxvent.com/user/API/get_data/?id={self.id}"
+            url = constants.users_api+f"{self.id}"
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, headers={'referer': constants.login_url}) as resp:
                     content = await resp.text()

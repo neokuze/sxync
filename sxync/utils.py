@@ -4,10 +4,10 @@ import base64
 import aiohttp
 import asyncio
 import re
-import socket
+import logging
+import json
 
 from . import constants
-from aiohttp.base_protocol import BaseProtocol
 from asyncio import streams, transports, get_event_loop
 
 _aiohttp_session = None
@@ -55,23 +55,10 @@ async def is_room_valid(name):
     """
     url = constants.room_url+f"{name}/"
     headers = {'referer': constants.login_url}
-    response = await _fetch_html(url, headers={})
+    response = await _fetch_html(url, headers={}, allow_redirects=False)
     if response['status_code'] == 302:
         return False
     return True
-
-
-def get_aiohttp_session():
-    global _aiohttp_session
-    if _aiohttp_session is None:
-        conn = aiohttp.TCPConnector(
-            limit=200,  # limit conn per host
-            limit_per_host=20,  # max limit per route
-            keepalive_timeout=30)
-        _aiohttp_session = aiohttp.ClientSession(
-            connector=conn, cookie_jar=cookie_jar,
-            headers={'referer': constants.login_url})
-    return _aiohttp_session
 
 
 def _is_cookie_valid(cj):
@@ -81,24 +68,42 @@ def _is_cookie_valid(cj):
     return False
 
 
-async def _fetch_html(url, headers=None):
-    session = get_aiohttp_session()
-    async with session.get(url, headers=headers, allow_redirects=False) as response:
-        response_headers = response.headers
-        redirected_url = response_headers.get('Location')
-        status_code = response.status
-        html = await response.text()
-        return {
+async def _fetch_html(url, headers={}, allow_redirects=True, data=None, action='get'):
+    headers.update({'referer': constants.login_url})
+    conn = aiohttp.TCPConnector(
+            limit=100,  # limit conn per host
+            limit_per_host=20,  # max limit per route
+            keepalive_timeout=30)
+    status_code, response_headers, redirected_url, html = None, None, None, None
+    async with  aiohttp.ClientSession(connector=conn, cookie_jar=cookie_jar,
+            headers=headers) as session:
+        if action == "get":
+            async with session.get(url, headers=headers, allow_redirects=allow_redirects, data=data) as response:
+                response_headers = response.headers
+                redirected_url = response_headers.get('Location')
+                status_code = response.status
+                html = await response.text()
+        elif action == "post":
+            async with session.post(url, headers=headers, allow_redirects=allow_redirects, data=data) as response:
+                response_headers = response.headers
+                redirected_url = response_headers.get('Location')
+                status_code = response.status
+                html = await response.text()
+    return {
             'status_code': status_code,
             'headers': response_headers,
             'redirected_url': redirected_url,
             'html': html
         }
 
+async def get_profile():
+    login = await _fetch_html(constants.login_url, headers={'Accept':'application/json'})
+    _json = login['html'].split("<script id=\"user_json\" type=\"application/json\">")[1].split("</script>")[0]
+    data = json.loads(_json)
+    return data
 
 class Jar:
     def __init__(self, username, password):
-        self.aiohttp_session = get_aiohttp_session()
         self.html = None
         self.html_post = str()
         self.csrftoken = str()
@@ -106,8 +111,9 @@ class Jar:
         self._default_user_name = username
         self._default_password = password
         self._success = None
-        self._limit = 70
+        self._limit = 70 # do not modo=ify this
         self._counter = 0
+        self._profile = str()
 
     def __repr__(self):
         return "[Jar]"
@@ -134,7 +140,7 @@ class Jar:
     def get_session_id(self):
         self.session_id_value = None
         self._success = False
-        for cookie in self.aiohttp_session.cookie_jar:
+        for cookie in cookie_jar:
             if cookie.key == 'sessionid':
                 self.session_id_value = cookie.value
                 self._success = True
@@ -147,27 +153,28 @@ class Jar:
             'password': self._default_password}
         while True:
             try:
-                async with self.aiohttp_session.post(constants.login_url, data=login_data, headers={'referer': constants.login_url}) as resp:
-                    self.html_post = await resp.text()
-                    pattern = r'<div\s+class="alert alert-danger error">(.*?)</div>'
-                    match = re.search(pattern, self.html_post, re.DOTALL)
-                    if match:
-                        warn = match.group(1).strip()
-                        logging.warning(f"[Warn] {warn}: {self._default_user_name}")
-                    else:  # /login success
-                        self.get_session_id()
-                    break
+                self.html_post = await _fetch_html(constants.login_url, data=login_data, action='post')
+                self.html_post = self.html_post['html']
+                pattern = r'<div\s+class="alert alert-danger error">(.*?)</div>'
+                match = re.search(pattern, self.html_post, re.DOTALL)
+                if not match: # /login success
+                    self.get_session_id()
+                else:  
+                    warn = match.group(1).strip()
+                    logging.warning(f"[Warn] {warn}: {self._default_user_name}")
+                break
             except (aiohttp.client_exceptions.ServerDisconnectedError) as e:
                 await asyncio.sleep(5)
 
     async def get_new_session(self):
         try:
-            login = await _fetch_html(constants.login_url, headers={'referer': constants.login_url})
+            login = await _fetch_html(constants.login_url)
             self.get(login)
             return True
         except aiohttp.client_exceptions.ClientConnectorError:
             await asyncio.sleep(5)  # /try again
             return False
+
 
 
 class Struct:

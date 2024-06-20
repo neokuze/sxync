@@ -11,7 +11,7 @@ from asyncio import Future, Task
 from . import constants
 from .exceptions import AlreadyConnected, InvalidRoom
 from .handler import EventHandler
-from .utils import public_attributes, is_room_valid, Jar
+from .utils import public_attributes, is_room_valid, Jar, get_profile
 from .room import Room
 from .private_messaging import PM
 
@@ -49,16 +49,27 @@ class Bot(EventHandler):
             if forever:
                 await asyncio.sleep(0.1)
 
-    async def start(self, *, forever=False, pm=True):
+    def add_task(self, coro_or_future: Union[Coroutine, Future]):  # TODO
+        """
+        add a task to ensure future.
+        """
+        task = asyncio.create_task(coro_or_future)
+        self._handle_task(task)
+
+    async def start(self, *, forever=True, pm=False):
         await self._call_event("init")
-        await self._get_new_session()
+        await self._get_new_session() # get token and sesionid
         self.running = True
         if pm:
-            self.join_pm()
+            if self._password:
+                #self._Jar._profile = await get_profile() 
+               # self.pm._name = self._Jar._profile.get(id, 0)
+                self.join_pm()
+            
         for room_name in self._rooms:
             self.join_room(room_name)
-        await self._call_event("start")
         await self._task_loop(self._forever)
+        await self._call_event("start")
 
     async def stop_all(self):
         """
@@ -66,38 +77,30 @@ class Bot(EventHandler):
         """
         for room_name in self.rooms:
             await self._watching_rooms[room_name].close()
-            self._watching_rooms.pop(room_name)
-
+            
+        self._watching_rooms.clear()
         if self.pm:
             await self.pm.close()
 
-        await self._Jar.aiohttp_session.close()
         self._running = False
 
     def join_room(self, room_name) -> None:
         if room_name not in self._watching_rooms.keys():
             self.add_task(self._watch_room(room_name))
 
-    async def _watch_room(self, room_name: str):
+    async def _watch_room(self, room_name: str, login: bool=False):
         if room_name in self._tasks:
             raise AlreadyConnected("User already connected. ")
         if not await is_room_valid(room_name):
             raise InvalidRoom("Invalid room.")
         room = self._watching_rooms[room_name] = Room(room_name, self)
-        await room._connect(anon=False)
+        await room._connect(anon=login) 
 
     def leave_room(self, room_name: str):
         room = self.get_room(room_name)
         if room:
             self.add_task(room.close())
             self._watching_rooms.pop(room_name)
-
-    def add_task(self, coro_or_future: Union[Coroutine, Future]):  # TODO
-        """
-        add a task to ensure future.
-        """
-        task = asyncio.create_task(coro_or_future)
-        self._handle_task(task)
 
     def _handle_task(self, task: Task):
         self._tasks.insert(0, task)
@@ -121,6 +124,8 @@ class Bot(EventHandler):
         if self.pm:
             self.add_task(self.pm.close())
 
+
+
     async def _get_new_session(self):
         """
         This is called by Connection when the chat restart.
@@ -133,3 +138,4 @@ class Bot(EventHandler):
                 session = await self._Jar.get_new_session()
                 if session:
                     break
+                

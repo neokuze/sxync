@@ -112,8 +112,11 @@ async def on_history(data):
 async def on_delete_message(data):
     self = data.get('self')
     msgid = data.get('msgid')
-    if data.get('result') == "OK":  # eliminar de mi vista
+    msg = self._mqueue[int(msgid)]
+    result = True if data.get('result') == "OK" else False
+    if result:  # eliminar de mi vista
         del self._mqueue[int(msgid)]
+    await self.client._call_event("message_deleted", msg, result)
 
 
 async def on_permissions(data):
@@ -127,8 +130,8 @@ async def on_permissions(data):
     self._permissions = RoomFlags(permissions_data)
 
 
-async def on_recent_users(data):
-    """
+async def on_recent_users(data): #TODO
+    """ 
     'recent': [{'uid': -181, 'info': {'device': 'Mobile'}, 'join_time': '2024-05-29T19:53:42.512Z', 'left_time': '2024-05-29T19:58:17.540Z', 'ip': ''},
     """
     self = data.get('self')
@@ -155,16 +158,17 @@ async def on_edit_message(data):
     result = data.get('result')
     msgid = data.get('msgid')
     text = data.get('text')
+    msg = self._mqueue[int(msgid)]
     if msgid in self._mqueue and result == "OK":
         msg = _process_edited(self, msgid, text)
-        await self.client._call_event("message_edited", msg)
+    await self.client._call_event("message_edited", msg, result)
 
 async def on_delete_chat(data):
     self = data.get("self")
-    result = data.get("result")
+    ok = data.get("result")
     user = User(data.get('uid'))
-    results = True if result == "OK" else False
-    await self.client._call_event("clear", self, user, results)
+    result = True if ok == "OK" else False
+    await self.client._call_event("clear", self, user, result)
 
 
 """

@@ -24,14 +24,13 @@ INT_TIMEOUT = 5
 
 class WS:
     def __init__(self, client):
+        self._client = client
+        self._auto_reconnect = None
         self._session = None
         self._ws = None
-        self._client = client
         self._listen_task = None
         self._headers = {}
-        self.logger = None
-        self._auto_reconnect = None
-        self._transport = None
+
 
     def __repr__(self):
         return "[ws: %s]" % self._name
@@ -63,11 +62,11 @@ class WS:
         while self._auto_reconnect:
             try:
                 try:  
-                    headers = {'referer': constants.login_url} | self._headers
+                    headers = {'referer': constants.login_url}
+                    headers.update(self._headers)
                     self._session = aiohttp.ClientSession(headers=headers)
                     peername = "wss://{}/ws/{}/{}/".format(
                         constants.url, self._type, self._name)
-                    self.reset()
                     self._ws = await self._session.ws_connect(peername, headers=headers, compress=15)
                 except (aiohttp.client_exceptions.ClientConnectorError,
                     aiohttp.client_exceptions.WSServerHandshakeError
@@ -89,13 +88,13 @@ class WS:
                                 raise WebSocketClosure
                         else:
                             raise WebSocketClosure
-                        
             except (ConnectionResetError, WebSocketClosure, asyncio.exceptions.CancelledError,
                     ServerDisconnectedError, WebSocketError
                     ) as e:
                 if isinstance(e, asyncio.CancelledError):
                     logging.debug("WebSocket listener task cancelled")
-                    break
+                    self._auto_reconnect = False
+                    return
                 if self._ws and self._ws.closed:
                     errorname = {code: name for name,
                                  code in WSCloseCode.__members__.items()}
@@ -109,9 +108,12 @@ class WS:
                 break
             
             finally:
+                self.reset()
+                await self._close_connection()
+                await self._close_session()
                 if self._auto_reconnect:
                     await asyncio.sleep(RECONNECT_TIMEOUT)
-
+                    
         await self._disconnect(reconnect=self._auto_reconnect)
         await self._client._call_event("disconnect", self)
 
@@ -149,8 +151,7 @@ class WS:
         self._headers = room | utils.generate_header()
         if not anon:
             if self.client._Jar.success is None:
-                 await self._login()
-                 
+                 await self._login() 
             elif self.client._Jar.success:
                 self._headers['Cookie'] = "csrftoken={}; sessionid={}".format(
                     self.client._Jar.csrftoken, self.client._Jar.session_id_value)
@@ -180,6 +181,7 @@ class WS:
     async def _disconnect(self, reconnect=None):
         await self._close_connection()
         await self._close_session()
+        await asyncio.sleep(1)
         if reconnect:
             await self._connect()
             await self._client._call_event("reconnect", self)
