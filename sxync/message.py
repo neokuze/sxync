@@ -4,6 +4,7 @@ import re
 
 class Message(object):  # base
     def __init__(self):
+        self._id = None
         self._user = None
         self._room = None
         self._time = 0
@@ -17,6 +18,10 @@ class Message(object):  # base
 
     def __repr__(self):
         return "[Message]"
+
+    @property
+    def id(self):
+        return self._id
 
     @property
     def user(self):
@@ -40,7 +45,6 @@ class Message(object):  # base
     
 class RoomBase(Message):
     def __init__(self):
-        self._id = None
         self._mentions = list()
         self._edited = False
         self._old = ""
@@ -63,7 +67,8 @@ class RoomBase(Message):
         """
         await self._room._send_command({"cmd":"edit_message","kwargs":{"msgid": self._id,"text": text,"target": self._room._name}})
         
-
+    async def flag(self):
+        await self._room._send_command({"cmd": "flag_message","kwargs": {"uid":self.user.id, "msgid": self.id}})
     
 def mentions(body, room):
     t = []
