@@ -7,6 +7,7 @@ import sys
 import json
 import aiohttp
 import logging
+from asyncio import TimeoutError
 
 from . import room_events, pm_events
 from . import room as group
@@ -76,7 +77,7 @@ class WS:
                 else:
                     await self._init()
                     while True:  # / while for receiving data? do
-                        if self._ws and not self._session.closed :
+                        if self._ws and not self._ws.closed:
                             msg = await asyncio.wait_for(self._ws.receive(), timeout=timeout.total)
                             if msg.type == aiohttp.WSMsgType.TEXT:
                                 await self._receive_message(msg.data)
@@ -88,13 +89,14 @@ class WS:
                                 raise WebSocketClosure
                         else:
                             raise WebSocketClosure
+
             except (ConnectionResetError, WebSocketClosure, asyncio.exceptions.CancelledError,
                     ServerDisconnectedError, WebSocketError
                     ) as e:
                 if isinstance(e, asyncio.CancelledError):
-                    logging.debug("WebSocket listener task cancelled")
                     self._auto_reconnect = False
-                    return
+                    logging.debug("WebSocket listener task cancelled")
+                    return # Interrupt loop
                 if self._ws and self._ws.closed:
                     errorname = {code: name for name,
                                  code in WSCloseCode.__members__.items()}

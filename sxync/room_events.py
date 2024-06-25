@@ -35,10 +35,11 @@ async def on_message(data):  # TODO
     dev = data.get('dev')
     msg = _process_room_msg(mid, self, user_id, text, msg_time, data, ip, dev)
     self._mqueue[int(mid)] = msg
-    await self.client._call_event("message", msg)
     if len(self._mqueue) > self._limit:
         oldest_mid = sorted(self._mqueue.keys())[0]
         del self._mqueue[oldest_mid]
+    await self.client._call_event("message", msg)
+    
 
 
 async def on_userlist(data):
@@ -47,14 +48,20 @@ async def on_userlist(data):
     """
     self = data.get('self')
     ul = data.get('userlist')
+    users = []
     for user_data in ul:
         user = User(user_data.get('uid'))
+        users.append(user)
         sessions = user_data.get('active')
+        info = user_data.get('device')
         join_time = user_data.get('join').split('.')[0]
         self._userlist[user] = Recents(
-            {'sessions': sessions, 'join_time': join_time})
+            {'sessions': sessions, 'join_time': join_time, 'info': dict(device=info)})
     if 'count' in data:
         self._usercounter = data.get('count')
+    if users:
+        get_all_profiles = [user.get_data() for user in users]
+        asyncio.gather(*get_all_profiles)
 
 
 async def on_join(data):
@@ -66,14 +73,16 @@ async def on_join(data):
     user = User(data.get('uid'))
     active = data.get('sessions')
     join_time = data.get('join').split('.')[0]
+    info = data.get('info', {})
     if user not in self._userlist:
-        self._userlist[user] = Recents({'sessions': 1, 'join_time': join_time})
-        if not user._fetched_profile and not user.isanon:
-            get_profile = [user.get_data(), asyncio.sleep(0)]
-            asyncio.gather(*get_profile)
+        self._userlist[user] = Recents(
+            dict(sessions=active, join_time=join_time, info=info))
     else:
         self._userlist[user]._update(
-            dict(join_time=join_time, sessions=active))
+            dict(sessions=active, join_time=join_time, info=info))
+    if not user._fetched_profile and not user.isanon:
+        fetch = [user.get_data(), asyncio.sleep(0)]
+        asyncio.gather(*fetch)
     await self.client._call_event("join_user", self, user, join_time)
 
 
@@ -85,8 +94,7 @@ async def on_leave(data):
     user = User(data.get('uid'))
     usercount = data.get('usercount')
     now = datetime.now(timezone.utc)
-    iso_format = now.replace(
-        microsecond=0).isoformat().split('+')[0].split('.')[0]
+    iso_format = now.replace(microsecond=0).isoformat().split('+')[0].split('.')[0]
     if user in self._userlist:
         info = dict(left_time=iso_format)
         info.update(data)
@@ -170,8 +178,12 @@ async def on_delete_chat(data):
     result = True if ok == "OK" else False
     await self.client._call_event("clear", self, user, result)
 
+async def on_rejected(data):
+    self = data.get('self')
+    print(f"{self.name} | rejected connection.")
+    
+async def wrong_command(data):
+    print(f"Wrong command {self.name}: ",data)
 
-"""
- {'target': 'sudoers', 'result': 'OK', 'reason': 'ALL MESSAGES DELETED', 'uid': 24, 'self': [room: sudoers]})
 
-"""
+

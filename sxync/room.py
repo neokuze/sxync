@@ -3,6 +3,7 @@ from collections import deque
 from .connection import WS
 from typing import List
 from .utils import cleanText, public_attributes
+from .user import User
 
 class Room(WS):
     def __init__(self, name, client, anon=False):
@@ -121,4 +122,33 @@ class Room(WS):
     async def clear_all(self):
         await self._send_command({"cmd":"delete_chat","kwargs":{"target":self.name}})
 
+    def _is_bot(self, user: User):
+        if user in self._userlist:
+            return self._userlist[user].is_bot
+        return None
+        
+    def _is_user(self, user: User):
+        if user in self._userlist:
+            return self._userlist[user].is_user
+        return None
 
+    async def _get_unban_list(self):
+        await self._send_command({"cmd":"get_banlist","kwargs":{}})
+
+    async def ban(self, username: str):
+        user = self.get_user(username)
+        if user is not None:
+            await self._send_command({"cmd":"ban_user","kwargs":{"uid":user.id, "uip": ""}})
+            
+    async def unban(self, username: str):
+        user = self.get_user(username)
+        if user is not None:
+            await self._send_command({"cmd":"unban_user","kwargs":{"uid":user.uid, "uip": ""}})
+    
+
+        
+"""
+'ban_user',{uid:uid,uip:uip}
+('unban_user',{bid:banid})
+
+"""

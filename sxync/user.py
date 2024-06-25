@@ -80,7 +80,7 @@ class User:
 
 class Recents:
     def __init__(self, data):
-        self._device = data.get('info', {}).get('device', "")
+        self._device = data.get('info', {}).get('device', '')
         self._join_time = data['join_time'].split('.')[0] if 'join_time' in data else None
         self._left_time = data['left_time'].split('.')[0] if 'left_time' in data else None
         self._sessions = data.get('sessions', None)
@@ -123,3 +123,19 @@ class Recents:
     @property
     def ip(self):
         return self._ip
+
+    @property
+    def is_bot(self):
+        return self._device.lower() == "bot"
+
+    @property
+    def is_mobile(self):
+        return self._device.lower() == "mobile"
+
+    @property
+    def is_pc(self):
+        return self._device.lower() == "pc"
+
+    @property
+    def is_user(self):
+        return self._device.lower() in ["pc","mobile"]
