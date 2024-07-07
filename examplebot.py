@@ -47,14 +47,20 @@ class Super(sxync.client.Bot):
 
 bot = Super(config.botuser[0], config.botuser[1], config.rooms)
 
-async def main():
+async def start():
     await bot.start()
 
 async def stop():
     await bot.stop_all()
+    
+loop = asyncio.get_event_loop()
 try:
-    asyncio.run(main())
+    loop.run_until_complete(start())
+    loop.run_forever()
 except KeyboardInterrupt:
-    print("Killed bot.")
+    print("[bot] Killed by end user.")
 finally:
-    pass # close or save files.
+    loop.run_until_complete(stop())
+    # loop.run_until_complete(cfg.save_all()) # aiofiles
+    loop.close()
+    sys.exit()
