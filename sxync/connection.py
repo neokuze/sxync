@@ -61,7 +61,7 @@ class WS:
             
     async def _listen_websocket(self):
         timeout = ClientTimeout(sock_connect=300, sock_read=300)
-        while True:
+        while self.reconnect:
             try:
                 headers = {'referer': constants.login_url}
                 headers.update(self._headers)
@@ -178,11 +178,11 @@ class WS:
     async def _disconnect(self):
         await self._close_connection()
         await self._close_session()
+        await self.client._call_event("disconnect", self)
 
     async def close(self):
         self.cancel()
         await self._disconnect()
-        await self._close_session()
 
     async def listen(self, anon=False, reconnect=True):
         """
