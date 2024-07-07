@@ -30,7 +30,7 @@ class WS:
         self._client = client
         self.reconnect = False
         self._session = None
-        self._ws = Optional[aiohttp.ClientWebSocketResponse] = None
+        self._ws = None
         self._listen_task = Optional[asyncio.Task] = None
         self._headers = {}
 
