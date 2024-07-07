@@ -108,7 +108,7 @@ class WS:
                     await asyncio.sleep(TIMEOUT)
                 
                 finally:
-                    await self._disconnect()
+                    await self._disconnect(False)
                     await asyncio.sleep(RTimeout)
                     
 
@@ -160,7 +160,7 @@ class WS:
             await self._listen_task
 
     def cancel(self):
-        self._auto_reconnect = False
+        self.reconnect = False
         if self._listen_task and not self._listen_task.cancelled() and not self._listen_task.done():
             self._listen_task.cancel()
 
@@ -173,10 +173,11 @@ class WS:
             else:
                 raise InvalidPasswd("Invalid Password")
 
-    async def _disconnect(self):
+    async def _disconnect(self, show=True):
         await self._close_connection()
         await self._close_session()
-        await self.client._call_event("disconnect", self)
+        if show:
+            await self.client._call_event("disconnect", self)
 
     async def close(self):
         self.cancel()
@@ -192,3 +193,7 @@ class WS:
             if not self.reconnect:
                 break
             await asyncio.sleep(3)
+
+    async def disconnect(self, anon=False, reconnect=True):
+        self.reconnect = False
+        await self.close()

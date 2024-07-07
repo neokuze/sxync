@@ -97,7 +97,7 @@ class Bot(EventHandler):
     def leave_room(self, room_name: str):
         room = self.get_room(room_name)
         if room:
-            self.add_task(room.close())
+            self.add_task(room.disconnect())
             self._watching_rooms.pop(room_name)
 
     def _handle_task(self, task: Task):
