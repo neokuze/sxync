@@ -58,7 +58,7 @@ class Bot(EventHandler):
 
     async def start(self, *, forever=True, pm=False):
         await self._call_event("init")
-        await self._get_new_session() # get token and sesionid
+        await asyncio.shield(self._get_new_session()) # get token and sesionid
         self.running = True
         if pm:
             if self._password:
