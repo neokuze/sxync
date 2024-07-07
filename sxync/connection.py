@@ -21,8 +21,8 @@ from aiohttp import ClientTimeout
 from aiohttp.http_websocket import WSCloseCode, WebSocketError
 from aiohttp.client_exceptions import ServerDisconnectedError, ServerTimeoutError
 
-RECONNECT_TIMEOUT = 5
-INT_TIMEOUT = 5
+RTimeout = 5
+TIMEOUT = 5
 
 
 class WS:
@@ -74,6 +74,7 @@ class WS:
                 ) as e:
                 logging.error("Websocket connection Error.")
             else:
+                self.reset()
                 try:
                     await self._init()
                     while True:  # / while for receiving data? do
@@ -104,14 +105,11 @@ class WS:
                             await self._client._get_new_session()
                     
                 except (asyncio.TimeoutError, ServerTimeoutError, TimeoutError):
-                    await asyncio.sleep(INT_TIMEOUT)
+                    await asyncio.sleep(TIMEOUT)
                 
                 finally:
-                    self.reset()
-                    await self._close_connection()
-                    await self._close_session()
-                    if self._auto_reconnect:
-                        await asyncio.sleep(RECONNECT_TIMEOUT)
+                    await self._disconnect()
+                    await asyncio.sleep(RTimeout)
                     
 
     async def _receive_message(self, msg):
