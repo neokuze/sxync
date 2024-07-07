@@ -62,8 +62,6 @@ class Bot(EventHandler):
         self.running = True
         if pm:
             if self._password:
-                #self._Jar._profile = await get_profile() 
-               # self.pm._name = self._Jar._profile.get(id, 0)
                 self.join_pm()
             
         for room_name in self._rooms:
@@ -94,7 +92,7 @@ class Bot(EventHandler):
         if not await is_room_valid(room_name):
             raise InvalidRoom("Invalid room.")
         room = self._watching_rooms[room_name] = Room(room_name, self)
-        await room._connect(anon=login) 
+        await room.listen(anon=login) 
 
     def leave_room(self, room_name: str):
         room = self.get_room(room_name)
@@ -123,8 +121,6 @@ class Bot(EventHandler):
     def leave_pm(self):
         if self.pm:
             self.add_task(self.pm.close())
-
-
 
     async def _get_new_session(self):
         """
