@@ -25,8 +25,7 @@ class Super(sxync.client.Bot):
 
     async def on_message(self, message):
         user = f"{message.user.showname if message.user.showname is None else message.user.name}"
-        print(time.strftime("%b/%d-%H:%M:%S", time.localtime(message.time)),
-              message.room.name, user , ascii(message.body)[1:-1])
+        print(message.time, message.room.name, user , ascii(message.body)[1:-1])
         message_content = message.body
         if len(message_content.split()) > 1:
             cmd, args = message_content.split(" ", 1)
@@ -53,15 +52,9 @@ async def main():
 
 async def stop():
     await bot.stop_all()
-    
-loop = asyncio.get_event_loop()
 try:
-    loop.run_until_complete(start())
-    loop.run_forever()
+    asyncio.run(main())
 except KeyboardInterrupt:
-    print("[bot] Killed by end user.")
+    print("Killed bot.")
 finally:
-    loop.run_until_complete(stop())
-    # loop.run_until_complete(cfg.save_all()) # aiofiles
-    loop.close()
-    sys.exit()
+    pass # close or save files.
