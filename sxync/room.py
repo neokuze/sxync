@@ -54,9 +54,11 @@ class Room(WS):
         await self._send_command({"cmd":"get_userlist","kwargs":{"target":self.name}})
         await self._send_command({"cmd":"get_history","kwargs":{"target":self.name}})
         
-    async def send_msg(self, text, html=False):
+    async def send_msg(self, text, html=False, reply=0):
         msg = html2.unescape(text) if html else html2.escape(text)
-        await self._send_command({"cmd":"message","kwargs":{"text": msg,"target":self.name}})
+        obj = {"text": msg,"target":self.name}
+        if reply: obj.update({"a": int(reply)})
+        await self._send_command({"cmd":"message","kwargs": obj})
 
     def get_user(self, username: str):
         exist = [x for x in self._userlist if x.showname.lower() == username.lower()]

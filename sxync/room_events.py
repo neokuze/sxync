@@ -26,6 +26,10 @@ async def on_ok(data):
 
 
 async def on_message(data):  # TODO
+    """
+    {"cmd": "message", "kwargs": { 
+        "text": "okas", "tid": 1721410291421, "target": "", "cd": 50, "cps": 0.5420155396506934, "cdw": 0, "uid": 24, "mid": 65832, "time": "2024-07-19T17:31:31.479Z", "uip": "", "dev": "PC"}}
+    """
     self = data.get('self')  # cliente. duh
     user_id = data.get('uid')  # l a base de datos nos guarda por id
     text = data.get('text')  # Body
@@ -33,13 +37,13 @@ async def on_message(data):  # TODO
     mid = data.get('mid')  # algun tiempo de actividad.
     ip = data.get('uip')
     dev = data.get('dev')
-    msg = _process_room_msg(mid, self, user_id, text, msg_time, data, ip, dev)
+    replied = data.get('a', 0)
+    msg = _process_room_msg(mid, self, user_id, text, msg_time, data, ip, dev, replied)
     self._mqueue[int(mid)] = msg
     if len(self._mqueue) > self._limit:
         oldest_mid = sorted(self._mqueue.keys())[0]
         del self._mqueue[oldest_mid]
     await self.client._call_event("message", msg)
-    
 
 
 async def on_userlist(data):
@@ -67,7 +71,6 @@ async def on_userlist(data):
 async def on_join(data):
     """
     {'uid': 30, 'sessions': 1, 'usercount': 3, 'join': '2024-03-14T01:23:59.549Z'}
-
     """
     self = data.get('self')
     user = User(data.get('uid'))
@@ -163,11 +166,11 @@ async def on_edit_message(data):
     ('result': 'OK', 'msgid': 53206, 'text': 'morning o.o/', 'target': ''})
     """
     self = data.get('self')
-    result = data.get('result')
+    result = True if data.get('result') == "OK" else False
     msgid = data.get('msgid')
     text = data.get('text')
     msg = self._mqueue[int(msgid)]
-    if msgid in self._mqueue and result == "OK":
+    if msgid in self._mqueue and result:
         msg = _process_edited(self, msgid, text)
     await self.client._call_event("message_edited", msg, result)
 

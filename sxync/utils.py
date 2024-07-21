@@ -45,7 +45,12 @@ def generate_header():
         'Sec-WebSocket-Version': '13',
         'Sec-WebSocket-Extensions': 'permessage-deflate',
         'Sec-WebSocket-Key': base64.b64encode(key).decode('utf-8'),
-        'Upgrade': 'websocket'}
+        'Upgrade': 'websocket',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'DNT': '1',
+        'Upgrade-Insecure-Requests': '1'}
     return headers
 
 
@@ -55,9 +60,9 @@ async def is_room_valid(name):
     """
     url = constants.room_url+f"{name}/"
     headers = {'referer': constants.login_url}
-    response = await _fetch_html(url, headers={}, allow_redirects=False)
-    if response['status_code'] == 302:
-        return False
+  #  response = await _fetch_html(url, headers={}, allow_redirects=False)
+    # if response['status_code'] == 302:
+    #     return False
     return True
 
 
@@ -153,8 +158,8 @@ class Jar:
             'password': self._default_password}
         while True:
             try:
-                self.html_post = await _fetch_html(constants.login_url, data=login_data, action='post')
-                self.html_post = self.html_post['html']
+                html = await _fetch_html(constants.login_url, data=login_data, action='post')
+                self.html_post = html['html']
                 pattern = r'<div\s+class="alert alert-danger error">(.*?)</div>'
                 match = re.search(pattern, self.html_post, re.DOTALL)
                 if not match: # /login success
@@ -187,3 +192,10 @@ class Struct:
 
     def __repr__(self):
         return f"<{self._name}>"
+
+def remove_html_tags(text):
+    text = " {} ".format(text)
+    clean_text = re.sub(r'<[^>]+>', '', text)
+    return clean_text
+
+# e; 1 # se supone que funcione

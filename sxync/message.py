@@ -1,5 +1,5 @@
 from .user import User
-from .utils import public_attributes
+from .utils import public_attributes, remove_html_tags
 import re
 
 class Message(object):  # base
@@ -48,6 +48,7 @@ class RoomBase(Message):
         self._mentions = list()
         self._edited = False
         self._old = ""
+        self._replied = 0
         
     @property
     def mentions(self):
@@ -56,6 +57,10 @@ class RoomBase(Message):
     @property
     def edited(self):
         return self._edited
+    
+    @property
+    def replied(self):
+        return self._replied
 
     @property
     def old(self):
@@ -65,10 +70,12 @@ class RoomBase(Message):
         """
         {"cmd":"edit_message","kwargs":{"msgid": self._id,"text":"boba","target": self._room}}
         """
-        await self._room._send_command({"cmd":"edit_message","kwargs":{"msgid": self._id,"text": text,"target": self._room._name}})
+        await self._room._send_command({"cmd":"edit_message","kwargs":{"msgid": self.id,"text": text,"target": self._room._name}})
         
     async def flag(self):
         await self._room._send_command({"cmd": "flag_message","kwargs": {"uid":self.user.id, "msgid": self.id}})
+    
+
     
 def mentions(body, room):
     t = []
@@ -80,7 +87,7 @@ def mentions(body, room):
                     t.append(participant)
     return t
     
-def _process_room_msg(mid, room, user_id, text, msg_time, raw = None, ip=None, dev=None):
+def _process_room_msg(mid, room, user_id, text, msg_time, raw = None, ip=None, dev=None, replied=0):
     msg = RoomBase()
     if int(user_id) < 0 and raw:
         anon_name = "Anon"
@@ -90,11 +97,12 @@ def _process_room_msg(mid, room, user_id, text, msg_time, raw = None, ip=None, d
     msg._room = room
     msg._time = msg_time
     msg._raw = str(raw)
-    msg._body = str(text)
+    msg._body = remove_html_tags(text)
     msg._mentions = mentions(msg._body, room)
     msg._id = mid
     msg._ip = ip
     msg._device = dev
+    msg._replied = replied
     return msg
 
 def _process_edited(room, msgid, text):
