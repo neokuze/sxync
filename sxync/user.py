@@ -62,6 +62,11 @@ class User:
     def isanon(self):
         return self._isanon
 
+    def picture(self):
+        if self.id > 0:
+            return "{}{}".format(constants.url, self._profile_img)
+        return None
+
     async def get_data(self):
         if self.id > 0:
             url = constants.users_api+f"{self.id}"
