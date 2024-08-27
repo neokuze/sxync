@@ -62,6 +62,7 @@ class User:
     def isanon(self):
         return self._isanon
 
+    @property
     def picture(self):
         if self.id > 0:
             return "{}{}".format(constants.url, self._profile_img)
