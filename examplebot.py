@@ -48,7 +48,7 @@ loop = asyncio.get_event_loop()
 bot = Super()
 
 async def start():
-    await bot.start(config.rooms)
+    await bot.start(rooms=config.rooms, forever=True, pm=True)
 
 async def stop():
     await bot.stop_all()
