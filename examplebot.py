@@ -44,23 +44,24 @@ class Super(sxync.client.Bot):
             elif cmd in ['hello', 'test', 'a']:
                 await message.room.send_msg(f"Hello {user}") #user must me be handle by id.
             
-
-bot = Super(config.botuser[0], config.botuser[1], config.rooms)
+loop = asyncio.get_event_loop()
+bot = Super()
 
 async def start():
-    await bot.start()
+    await bot.start(config.rooms)
 
 async def stop():
     await bot.stop_all()
-    
-loop = asyncio.get_event_loop()
-try:
-    loop.run_until_complete(start())
-    loop.run_forever()
-except KeyboardInterrupt:
-    print("[bot] Killed by end user.")
-finally:
-    loop.run_until_complete(stop())
-    # loop.run_until_complete(cfg.save_all()) # aiofiles
-    loop.close()
-    sys.exit()
+
+if __name__ == "__main__":
+    try:
+        bot.login(config.botuser[0], config.botuser[1], loop=loop)
+        loop.run_until_complete(start())
+        loop.run_forever()
+    except KeyboardInterrupt:
+        print("[bot] Killed by end user.")
+    finally:
+        loop.run_until_complete(stop())
+        # loop.run_until_complete(cfg.save_all()) # aiofiles
+        loop.close()
+        sys.exit()
