@@ -11,8 +11,6 @@ from . import constants
 from asyncio import streams, transports, get_event_loop
 
 _aiohttp_session = None
-cookie_jar = aiohttp.CookieJar(unsafe=False)
-
 
 def cleanText(text):
     """Regresa texto en minúsculas y sin acentos :> thx linkkg"""
@@ -68,11 +66,11 @@ def _is_cookie_valid(cj):
     return False
 
 
-async def _fetch_html(url, headers={}, allow_redirects=True, data=None, action='get'):
+async def _fetch_html(url, headers={}, cookie_jar=None, allow_redirects=True, data=None, action='get'):
     headers.update({'referer': constants.login_url})
     conn = aiohttp.TCPConnector(
             limit=100,  # limit conn per host
-            limit_per_host=20,  # max limit per route
+            limit_per_host=10,  # max limit per route
             keepalive_timeout=30)
     status_code, response_headers, redirected_url, html = None, None, None, None
     async with  aiohttp.ClientSession(connector=conn, cookie_jar=cookie_jar,
@@ -103,7 +101,7 @@ async def get_profile():
     return data
 
 class Jar:
-    def __init__(self, username, password):
+    def __init__(self, username, password, loop):
         self.html = None
         self.html_post = str()
         self.csrftoken = str()
@@ -114,6 +112,7 @@ class Jar:
         self._limit = 70 # do not modo=ify this
         self._counter = 0
         self._profile = str()
+        self.cookie_jar = aiohttp.CookieJar(unsafe=False, loop=loop)
 
     def __repr__(self):
         return "[Jar]"
@@ -140,7 +139,7 @@ class Jar:
     def get_session_id(self):
         self.session_id_value = None
         self._success = False
-        for cookie in cookie_jar:
+        for cookie in self.cookie_jar:
             if cookie.key == 'sessionid':
                 self.session_id_value = cookie.value
                 self._success = True
@@ -153,8 +152,8 @@ class Jar:
             'password': self._default_password}
         while True:
             try:
-                html = await _fetch_html(constants.login_url, data=login_data, action='post')
-                self.html_post = html['html']
+                self.html_post = await _fetch_html(constants.login_url, cookie_jar=self.cookie_jar, data=login_data, action='post')
+                self.html_post = self.html_post['html']
                 pattern = r'<div\s+class="alert alert-danger error">(.*?)</div>'
                 match = re.search(pattern, self.html_post, re.DOTALL)
                 if not match: # /login success
@@ -168,7 +167,7 @@ class Jar:
 
     async def get_new_session(self):
         try:
-            login = await _fetch_html(constants.login_url)
+            login = await _fetch_html(constants.login_url, cookie_jar=self.cookie_jar)
             self.get(login)
             return True
         except aiohttp.client_exceptions.ClientConnectorError:
@@ -187,10 +186,3 @@ class Struct:
 
     def __repr__(self):
         return f"<{self._name}>"
-
-def remove_html_tags(text):
-    text = " {} ".format(text)
-    clean_text = re.sub(r'<[^>]+>', '', text)
-    return clean_text
-
-# e; 1 # se supone que funcione

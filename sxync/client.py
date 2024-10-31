@@ -16,18 +16,19 @@ from .room import Room
 from .private_messaging import PM
 
 class Bot(EventHandler):
-    def __init__(self, username, password, rooms=[], forever=True):
-        self._username = username
-        self._password = password
+    def __init__(self, forever=True):
+        self._username = None
+        self._password = None
         self.pm = None
-        self._Jar = Jar(username, password)
         self.debug = 1
-        self._rooms = rooms
+        self._rooms = []
+        self._Jar = None
         self._watching_rooms = {}
         self._tasks: List[Task] = []
         self._task_loops: List[Task] = []
         self._running = None
         self._forever = forever
+        self._loop = None
 
     def __repr__(self):
         return "[client]"
@@ -55,9 +56,17 @@ class Bot(EventHandler):
         """
         task = asyncio.create_task(coro_or_future)
         self._handle_task(task)
+    
+    def login(self, username, password, loop=None):
+        self._username = username
+        self._password = password
+        if loop:
+            self._loop = loop
+        self._Jar = Jar(username, password, loop=self._loop)
 
-    async def start(self, *, forever=True, pm=False):
+    async def start(self, *, rooms = [], forever=True, pm=False):
         await self._call_event("init")
+        self._rooms = rooms
         await asyncio.shield(self._get_new_session()) # get token and sesionid
         self.running = True
         if pm:
@@ -97,7 +106,7 @@ class Bot(EventHandler):
     def leave_room(self, room_name: str):
         room = self.get_room(room_name)
         if room:
-            self.add_task(room.disconnect())
+            self.add_task(room.close())
             self._watching_rooms.pop(room_name)
 
     def _handle_task(self, task: Task):
