@@ -186,3 +186,8 @@ class Struct:
 
     def __repr__(self):
         return f"<{self._name}>"
+
+def remove_html_tags(text):
+    text = " {} ".format(text)
+    clean_text = re.sub(r'<[^>]+>', '', text)
+    return clean_text
