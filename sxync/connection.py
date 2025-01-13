@@ -109,7 +109,7 @@ class WS:
                 
                 finally:
                     await self._disconnect(False)
-                    await asyncio.sleep(RTimeout)
+                    
                     
 
     async def _receive_message(self, msg):

@@ -20,7 +20,7 @@ class Bot(EventHandler):
         self._username = None
         self._password = None
         self.pm = None
-        self.debug = 1
+        self.debug = 0
         self._rooms = []
         self._Jar = None
         self._watching_rooms = {}
@@ -139,6 +139,7 @@ class Bot(EventHandler):
         """
         if self._Jar._counter <= time.time():
             self._Jar._counter = time.time() + self._Jar._limit
+            self._Jar._reset()
             while True:
                 session = await self._Jar.get_new_session()
                 if session:

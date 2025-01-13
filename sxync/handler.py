@@ -1,8 +1,7 @@
 import logging
 import inspect
 import typing
-
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+import logging
 
 class EventHandler:
     def __repr__(self):

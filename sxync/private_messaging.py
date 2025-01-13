@@ -4,7 +4,7 @@ from .user import User
 
 class PM(WS):
     def __init__(self, client):
-        self._name = int()
+        self._name = "pm"
         self._client = client
         self._user = None
         self._type = 'pm'
