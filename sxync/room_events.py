@@ -188,5 +188,11 @@ async def on_rejected(data):
 async def wrong_command(data):
     print(f"Wrong command {self.name}: ",data)
 
-
+#delete_user {'uid': 29, 'target': '', 'result': 'OK', 'reason': 'DELETED', 'self': [room: ]}
+async def on_delete_user(data):
+    self = data.get('self')
+    user = User(data.get('uid'))
+    ok = data.get('result')
+    result = True if ok == "OK" else False
+    await self.client._call_event("delete_user", self, user, result)
 
