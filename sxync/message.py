@@ -75,6 +75,8 @@ class RoomBase(Message):
     async def flag(self):
         await self._room._send_command({"cmd": "flag_message","kwargs": {"uid":self.user.id, "msgid": self.id}})
     
+    async def delete(self):
+        await self._room._send_command({"cmd":"delete_message","kwargs":{"target":self._room._name,"msgid":self.id}})
 
     
 def mentions(body, room):
