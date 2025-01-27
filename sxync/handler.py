@@ -2,6 +2,8 @@ import logging
 import inspect
 import typing
 import logging
+import asyncio
+import json
 
 class EventHandler:
     def __repr__(self):
@@ -30,3 +32,16 @@ class EventHandler:
         else:
             event_name = name
         setattr(self, event_name, func)
+
+class MessageHandler(EventHandler):
+    def __init__(self):
+        self._msg_queue = asyncio.Queue()
+
+    async def _handle_messages(self):
+        while True:
+            message = await self._msg_queue.get()
+            asyncio.create_task(self._call_event("message", message))  
+            self._msg_queue.task_done()
+
+    async def _add_message(self, message):
+        await self._msg_queue.put(message)

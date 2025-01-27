@@ -12,6 +12,8 @@ class Message(object):  # base
         self._raw = str()
         self._ip   = str()
         self._device = str()
+        self._tid = str()
+        self._delete_after = int()
 
     def __dir__(self):
         return public_attributes(self)
@@ -22,6 +24,10 @@ class Message(object):  # base
     @property
     def id(self):
         return self._id
+
+    @property
+    def tid(self):
+        return self._tid
 
     @property
     def user(self):
@@ -49,7 +55,7 @@ class RoomBase(Message):
         self._edited = False
         self._old = ""
         self._replied = 0
-        
+ 
     @property
     def mentions(self):
         return self._mentions
@@ -89,7 +95,7 @@ def mentions(body, room):
                     t.append(participant)
     return t
     
-def _process_room_msg(mid, room, user_id, text, msg_time, raw = None, ip=None, dev=None, replied=0):
+def _process_room_msg(mid, room, user_id, text, _time:str = "", tid:str = "", raw = None, ip=None, dev=None, replied=0):
     msg = RoomBase()
     if int(user_id) < 0 and raw:
         anon_name = "Anon"
@@ -97,10 +103,11 @@ def _process_room_msg(mid, room, user_id, text, msg_time, raw = None, ip=None, d
     else:
         msg._user = User(int(user_id))
     msg._room = room
-    msg._time = msg_time
+    msg._time = _time
     msg._raw = str(raw)
     msg._body = remove_html_tags(text)
     msg._mentions = mentions(msg._body, room)
+    msg._tid = str(tid)
     msg._id = mid
     msg._ip = ip
     msg._device = dev
@@ -114,3 +121,5 @@ def _process_edited(room, msgid, text):
     room._mqueue[int(msgid)]._mentions = mentions(text, room)
     room._mqueue[int(msgid)]._edited = True
     return room._mqueue[int(msgid)]
+
+

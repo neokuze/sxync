@@ -4,6 +4,10 @@ from .connection import WS
 from typing import List
 from .utils import cleanText, public_attributes
 from .user import User
+from .message import _process_room_msg
+import asyncio
+import time
+
 
 class Room(WS):
     def __init__(self, name, client, anon=False):
@@ -53,12 +57,29 @@ class Room(WS):
     async def _init(self):
         await self._send_command({"cmd":"get_userlist","kwargs":{"target":self.name}})
         await self._send_command({"cmd":"get_history","kwargs":{"target":self.name}})
-        
-    async def send_msg(self, text, html=False, reply=0):
+
+    async def _delete_message(self, tid, delay: float=0.0):
+        """
+        Must be run in another task
+        """
+        async def delete():
+            await asyncio.sleep(delay)
+            message = self.get_message(tid)
+            if message:
+                await message.delete()
+        self.client.add_task(delete())
+
+    async def send_msg(self, text: str, html:bool=False, reply: int=0, delete_after: float=0.0):
+        """
+        Send message to the room.
+        """
         msg = html2.unescape(text) if html else html2.escape(text)
-        obj = {"text": msg,"target":self.name}
-        if reply: obj.update({"a": int(reply)})
-        await self._send_command({"cmd":"message","kwargs": obj})
+        data = {"text": msg,"target":self.name, "tid": str(int(time.time() * 1000))}
+        if reply: data.update({"a": int(reply)})
+        await self._send_command({"cmd":"message","kwargs": data})
+        if delete_after:
+            await self._delete_message(data['tid'], delete_after)
+            
 
     def get_user(self, username: str):
         exist = [x for x in self._userlist if x.showname.lower() == username.lower()]
@@ -72,9 +93,20 @@ class Room(WS):
         return [msg for id, msg in self._history]
     
     def get_last_message(self, user_name: str):
+        """
+        Search message by username
+        """
         user = self.get_user(user_name)
         if user:
             user_messages = [msg for msg in self.history if msg.user.id == user.id]
+            if user_messages:
+                return user_messages[0]
+            return False
+        return None
+
+    def get_message(self, tid: str):
+        if tid:
+            user_messages = [msg for msg in self.history if msg.tid == tid]
             if user_messages:
                 return user_messages[0]
             return False

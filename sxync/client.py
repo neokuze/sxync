@@ -10,12 +10,12 @@ from asyncio import Future, Task
 
 from . import constants
 from .exceptions import AlreadyConnected, InvalidRoom
-from .handler import EventHandler
+from .handler import MessageHandler
 from .utils import public_attributes, is_room_valid, Jar, get_profile
 from .room import Room
 from .private_messaging import PM
 
-class Bot(EventHandler):
+class Bot(MessageHandler):
     def __init__(self, forever=True):
         self._username = None
         self._password = None
@@ -29,6 +29,9 @@ class Bot(EventHandler):
         self._running = None
         self._forever = forever
         self._loop = None
+        self._task_handle_messages = None
+        self._task_handle_delete = None
+        super().__init__()
 
     def __repr__(self):
         return "[client]"
@@ -52,10 +55,11 @@ class Bot(EventHandler):
 
     def add_task(self, coro_or_future: Union[Coroutine, Future]):  # TODO
         """
-        add a task to ensure future.
+        add a task and return.
         """
         task = asyncio.create_task(coro_or_future)
         self._handle_task(task)
+        return task
     
     def login(self, username, password, loop=None):
         self._username = username
@@ -65,9 +69,11 @@ class Bot(EventHandler):
         self._Jar = Jar(username, password, loop=self._loop)
 
     async def start(self, *, rooms = [], forever=True, pm=False):
-        await self._call_event("init")
         self._rooms = rooms
+        await self._call_event("init")
         await asyncio.shield(self._get_new_session()) # get token and sesionid
+        self._task_handle_messages = asyncio.create_task(self._handle_messages())
+
         self.running = True
         if pm:
             if self._password:
@@ -88,6 +94,9 @@ class Bot(EventHandler):
         self._watching_rooms.clear()
         if self.pm:
             await self.pm.close()
+        self._task_handle_messages.cancel()
+
+        await self._task_handle_messages
 
         self._running = False
 

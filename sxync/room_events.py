@@ -37,13 +37,14 @@ async def on_message(data):  # TODO
     mid = data.get('mid')  # algun tiempo de actividad.
     ip = data.get('uip')
     dev = data.get('dev')
+    tid = data.get('tid')
     replied = data.get('a', 0)
-    msg = _process_room_msg(mid, self, user_id, text, msg_time, data, ip, dev, replied)
+    msg = _process_room_msg(mid, self, user_id, text, msg_time, tid, data, ip, dev, replied)
     self._mqueue[int(mid)] = msg
     if len(self._mqueue) > self._limit:
         oldest_mid = sorted(self._mqueue.keys())[0]
         del self._mqueue[oldest_mid]
-    await self.client._call_event("message", msg)
+    await self.client._add_message(msg)
 
 
 async def on_userlist(data):

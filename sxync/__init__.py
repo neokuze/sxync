@@ -1,4 +1,4 @@
-__version__ = "1.1.8b"
+__version__ = "1.2.0b"
 from . import client
 from . import connection
 from . import room_events
