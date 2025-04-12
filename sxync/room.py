@@ -100,7 +100,7 @@ class Room(WS):
             raise TypeError("argument must be str or User class")
         exist = [x for x in self._userlist if x.showname.lower() == username.lower()]
         if exist:
-            return self._userlist[exist[0]].all
+            return self._userlist[exist[0]]
         raise UserNotFound("User not found in room.")
 
     @property
