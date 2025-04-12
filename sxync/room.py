@@ -98,7 +98,7 @@ class Room(WS):
 
         if not isinstance(username, str):
             raise TypeError("argument must be str or User class")
-        exist = [x for x in self.alluserlist if x.showname.lower() == username.lower()]
+        exist = [x for x in self._userlist if x.showname.lower() == username.lower()]
         if exist:
             return self._userlist[exist[0]].all
         raise UserNotFound("User not found in room.")
