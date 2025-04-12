@@ -22,6 +22,9 @@ def public_attributes(obj):
     ]
 
 def generate_header():
+    """
+    the chat doens't need all that headers, but I just included by default for all requests.
+    """
     key = ''.join(random.choice(string.ascii_letters + string.digits)
                   for _ in range(16)).encode('utf-8')
     headers = {
@@ -42,6 +45,7 @@ def generate_header():
 async def is_room_valid(name):
     """
     an ugly way to check is exist.
+    turning off redirects bypass error.
     """
     url = constants.room_url+f"{name}/"
     headers = {'referer': constants.login_url}
@@ -52,6 +56,9 @@ async def is_room_valid(name):
 
 
 def _is_cookie_valid(cj):
+    """
+    searching in the cookies
+    """
     for cookie in cj:
         if cookie.key == 'sessionid':
             return True
@@ -59,6 +66,9 @@ def _is_cookie_valid(cj):
 
 
 async def _fetch_html(url, headers={}, cookie_jar=None, allow_redirects=True, data=None, action='get'):
+    """
+    its supposed to fetch a url and return as dictionary
+    """
     headers.update({'referer': constants.login_url})
     conn = aiohttp.TCPConnector(
         limit=100,  # limit conn per host
@@ -120,6 +130,9 @@ class Jar:
         return None
 
     def get_session_id(self):
+        """
+        this is for getting the sessionid if is found, the user log in.
+        """
         self.session_id_value = None
         self._success = False
         for cookie in self.cookie_jar:

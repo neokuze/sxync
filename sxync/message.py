@@ -105,7 +105,7 @@ def _process_room_msg(mid, room, user_id, text, _time:str = "", tid:str = "", ra
     msg._room = room
     msg._time = _time
     msg._raw = str(raw)
-    msg._body = remove_html_tags(text)
+    msg._body = remove_html_tags(text)[1:]
     msg._mentions = mentions(msg._body, room)
     msg._tid = str(tid)
     msg._id = mid
@@ -123,6 +123,6 @@ def _process_edited(room, msgid, text):
     return room._mqueue[int(msgid)]
 
 
-def button(name: str, text: str):
-    b = f"""<button onclick="room_mounted.current_connection.sendToSocket(\'message\',{text:\'{text}\'})">{name}</button>"""
+def button(text: str, name: str):
+    b = f"""<button onclick="room_mounted.current_connection.sendToSocket('message',{{'text':'{text}'}})">{name}</button>"""
     return b
