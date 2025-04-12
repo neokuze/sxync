@@ -12,3 +12,6 @@ class WebSocketClosure(Exception):
 
 class AnonMissingPicture(Exception):
     pass
+
+class UserNotFound(Exception):
+    pass

@@ -4,7 +4,7 @@ from .connection import WS
 from typing import List
 from .utils import public_attributes
 from .user import User
-
+from .exceptions import UserNotFound
 import asyncio
 import time
 
@@ -81,11 +81,27 @@ class Room(WS):
             await self._delete_message(data['tid'], delete_after)
             
 
-    def get_user(self, username: str):
+    def get_user(self, username: str | User) -> User:
+        if isinstance(username, User):
+            username = username.showname  
+
+        if not isinstance(username, str):
+            raise TypeError("argument must be str or User class.")
         exist = [x for x in self.alluserlist if x.showname.lower() == username.lower()]
         if exist:
             return exist[0]
-        return None
+        raise UserNotFound("User not found in room.")
+
+    def get_recent(self, username: str | User):
+        if isinstance(username, User):
+            username = username.showname 
+
+        if not isinstance(username, str):
+            raise TypeError("argument must be str or User class")
+        exist = [x for x in self.alluserlist if x.showname.lower() == username.lower()]
+        if exist:
+            return self._userlist[exist[0]].all
+        raise UserNotFound("User not found in room.")
 
     @property
     def history(self):

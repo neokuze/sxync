@@ -100,10 +100,16 @@ class User:
 class Recents:
     def __init__(self, data):
         self._device = data.get('info', {}).get('device', '')
-        self._join_time = data['join_time'].split('.')[0] if 'join_time' in data else None
-        self._left_time = data['left_time'].split('.')[0] if 'left_time' in data else None
+        self._join_time = data['join_time'].split('.')[0] if 'join_time' in data else ""
+        self._left_time = data['left_time'].split('.')[0] if 'left_time' in data else ""
         self._sessions = data.get('sessions', 0)
         self._ip = data.get('ip', "")
+
+    @property
+    def all(self):
+        return dict(device=self.device, join_time=self.join_time, left_time=self.left_time, 
+            sessions=self.sessions, ip=self.ip, is_bot=self.is_bot,is_user=self.is_user,     
+            is_pc=self.is_pc, is_mobile=self.is_mobile)
 
     def _update(self, data):
         if 'info' in data and data['info']:
