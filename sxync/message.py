@@ -123,3 +123,6 @@ def _process_edited(room, msgid, text):
     return room._mqueue[int(msgid)]
 
 
+def button(name: str, text: str):
+    b = f"""<button onclick="room_mounted.current_connection.sendToSocket(\'message\',{text:\'{text}\'})">{name}</button>"""
+    return b

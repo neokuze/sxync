@@ -9,3 +9,6 @@ class InvalidPasswd(Exception):
 
 class WebSocketClosure(Exception):
     pass
+
+class AnonMissingPicture(Exception):
+    pass

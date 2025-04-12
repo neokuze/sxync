@@ -2,7 +2,8 @@ import aiohttp
 import json
 import logging
 from collections import deque
-from .utils import cleanText, public_attributes
+from .utils import public_attributes
+from .exceptions import AnonMissingPicture
 from . import constants
 
 class User: 
@@ -47,28 +48,38 @@ class User:
         return "[user: %s]" % self.showname
 
     @property
-    def id(self):
+    def id(self) -> int:
         return int(self._id)
 
     @property
-    def showname(self):
+    def showname(self) -> str:
         return self._showname
 
     @property
-    def name(self):
+    def mention(self) -> str:
+        return "@"+self._showname
+
+    @property
+    def name(self) -> str:
         return self._name
 
     @property
-    def isanon(self):
+    def isanon(self) -> bool:
         return self._isanon
 
     @property
-    def picture(self):
+    def picture(self) -> str:
         if self.id > 0:
-            return "https://{}{}".format(constants.url, self._profile_img)
-        return None
+            return "https://{}{}?v=1.jpg".format(constants.url, self._profile_img)
+        raise AnonMissingPicture("Anon users doesn't have profile photo.")
 
-    async def get_data(self):
+    @property
+    def gif(self) -> str:
+        if self.id > 0:
+            return "https://{}{}?v=1.gif".format(constants.url, self._profile_img)
+        raise AnonMissingPicture("Anon users doesn't have profile photo.")
+
+    async def get_data(self) -> None:
         if self.id > 0:
             url = constants.users_api+f"{self.id}"
             async with aiohttp.ClientSession() as session:
@@ -78,19 +89,21 @@ class User:
                     result = data.get('reason')
                     if result == "PROFILE FOUND":
                         result = data.get('profile')
-                        self._name = cleanText(result['custom'])
+                        self._name = result['custom']
                         self._showname = result['custom']
                         self._banner = result['banner']
                         self._profile_img = result['image']
                         self._fetched_profile = True
+                        return None
+                    return False
 
 class Recents:
     def __init__(self, data):
         self._device = data.get('info', {}).get('device', '')
         self._join_time = data['join_time'].split('.')[0] if 'join_time' in data else None
         self._left_time = data['left_time'].split('.')[0] if 'left_time' in data else None
-        self._sessions = data.get('sessions', None)
-        self._ip = data.get('ip', None)
+        self._sessions = data.get('sessions', 0)
+        self._ip = data.get('ip', "")
 
     def _update(self, data):
         if 'info' in data and data['info']:
@@ -111,37 +124,37 @@ class Recents:
         return f"<{self.__class__.__name__}>"
 
     @property
-    def device(self):
+    def device(self) -> str:
         return self._device
 
     @property
-    def join_time(self):
+    def join_time(self) -> str:
         return self._join_time
 
     @property
-    def left_time(self):
+    def left_time(self) -> str:
         return self._left_time
 
     @property
-    def sessions(self):
+    def sessions(self) -> int:
         return self._sessions
 
     @property
-    def ip(self):
+    def ip(self) -> str:
         return self._ip
 
     @property
-    def is_bot(self):
+    def is_bot(self) -> bool:
         return self._device.lower() == "bot"
 
     @property
-    def is_mobile(self):
+    def is_mobile(self) -> bool:
         return self._device.lower() == "mobile"
 
     @property
-    def is_pc(self):
+    def is_pc(self) -> bool:
         return self._device.lower() == "pc"
 
     @property
-    def is_user(self):
+    def is_user(self) -> bool:
         return self._device.lower() in ["pc","mobile"]

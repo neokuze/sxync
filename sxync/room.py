@@ -2,9 +2,9 @@ import html as html2
 from collections import deque
 from .connection import WS
 from typing import List
-from .utils import cleanText, public_attributes
+from .utils import public_attributes
 from .user import User
-from .message import _process_room_msg
+
 import asyncio
 import time
 
@@ -82,7 +82,7 @@ class Room(WS):
             
 
     def get_user(self, username: str):
-        exist = [x for x in self._userlist if x.showname.lower() == username.lower()]
+        exist = [x for x in self.alluserlist if x.showname.lower() == username.lower()]
         if exist:
             return exist[0]
         return None

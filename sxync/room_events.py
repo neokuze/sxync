@@ -197,3 +197,8 @@ async def on_delete_user(data):
     result = True if ok == "OK" else False
     await self.client._call_event("delete_user", self, user, result)
 
+#update_image {'uid': 29, 'self': [room: ]}
+async def on_update_image(data):
+    self = data.get('self')
+    user = User(data.get('uid'))
+    await self.client._call_event("update_profile_image", self, user)

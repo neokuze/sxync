@@ -6,6 +6,9 @@ import asyncio
 import re
 import logging
 import json
+from aiohttp.hdrs import USER_AGENT
+from aiohttp.http import SERVER_SOFTWARE
+from .__meta__ import __version__
 from . import constants
 
 
@@ -27,6 +30,7 @@ def generate_header():
         'Accept-Language': 'en-US,en;q=0.5',
         'Accept-Encoding': 'gzip, deflate, br',
         'Host': constants.url,
+        USER_AGENT: f"{SERVER_SOFTWARE} sxync/{__version__}",
         'Origin': f'https://{constants.url}',
         'Sec-WebSocket-Version': '13',
         'Sec-WebSocket-Extensions': 'permessage-deflate',
