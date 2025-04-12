@@ -83,18 +83,18 @@ class Room(WS):
 
     def get_user(self, username: str | User) -> User:
         if isinstance(username, User):
-            username = username.showname  
+            username = username.showname
 
         if not isinstance(username, str):
             raise TypeError("argument must be str or User class.")
-        exist = [x for x in self.alluserlist if x.showname.lower() == username.lower()]
+        exist = [x for x in self._userlist if x.showname.lower() == username.lower()]
         if exist:
             return exist[0]
         raise UserNotFound("User not found in room.")
 
     def get_recent(self, username: str | User):
         if isinstance(username, User):
-            username = username.showname 
+            username = username.showname
 
         if not isinstance(username, str):
             raise TypeError("argument must be str or User class")
@@ -108,17 +108,23 @@ class Room(WS):
         self._history = sorted(self._mqueue.items(), key=lambda x: x[0], reverse=True)
         return [msg for id, msg in self._history]
     
-    def get_last_message(self, user_name: str):
+    def get_last_message(self, user_name: str | User):
         """
         Search message by username
         """
+        if isinstance(username, User):
+            username = username.showname
+
+        if not isinstance(username, str):
+            raise TypeError("argument must be str or User class")
+            
         user = self.get_user(user_name)
         if user:
             user_messages = [msg for msg in self.history if msg.user.id == user.id]
             if user_messages:
                 return user_messages[0]
             return False
-        return None
+        raise UserNotFound("User not found in room.")
 
     def get_message(self, tid: str):
         if tid:
@@ -129,7 +135,7 @@ class Room(WS):
         return None
 
     def _filter_userlist(self, active: bool, anon: bool = None) -> List:
-        if anon != None:
+        if anon is not None:
             return [
                 user for user, recents in self._userlist.items()
                 if (recents.sessions if active else not recents.sessions) and 
@@ -150,19 +156,38 @@ class Room(WS):
         return self._filter_userlist(active, anon)
 
     @property
+    def raw_userlist(self) -> List:
+        """
+        raw userlist (all connected and disconnected users.)
+        """
+        return self._userlist
+
+    @property
     def alluserlist(self) -> List:
+        """
+        all userlist (all connected users.)
+        """
         return self._alluserlist()
 
     @property
     def anonlist(self) -> List:
+        """
+        active anonlist (anons connected)
+        """
         return self._alluserlist('anons')
 
     @property
     def userlist(self) -> List:
+        """
+        Active userlist (users connected)
+        """
         return self._alluserlist('users')
     
     @property
     def recents(self) -> List:
+        """
+        only show recents, but only inactive users. not show at all.
+        """
         return self._alluserlist('all', False)
 
     async def delete_user(self, username: str):
@@ -175,12 +200,12 @@ class Room(WS):
     def _is_bot(self, user: User):
         if user in self._userlist:
             return self._userlist[user].is_bot
-        return None
+        raise UserNotFound("User not found in room.")
         
     def _is_user(self, user: User):
         if user in self._userlist:
             return self._userlist[user].is_user
-        return None
+        raise UserNotFound("User not found in room.")
 
     async def _get_unban_list(self):
         await self._send_command({"cmd":"get_banlist","kwargs":{}})
