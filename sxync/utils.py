@@ -180,16 +180,6 @@ class Struct:
     def __repr__(self):
         return f"<{self._name}>"
 
-def cleanText(text):
-    text = text.lower().strip()
-    clean = {
-        "á": "a", "é": "e", "í": "i", "ó": "o", "ú": "u"
-    }
-    for y in clean:
-        if y in text:
-            text = text.replace(y, clean[y])
-    return text
-
 def remove_html_tags(text):
     text = " {} ".format(text)
     clean_text = re.sub(r'<[^>]+>', '', text)
