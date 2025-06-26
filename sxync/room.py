@@ -112,10 +112,10 @@ class Room(WS):
         """
         Search message by username
         """
-        if isinstance(username, User):
-            username = username.showname
+        if isinstance(user_name, User):
+            user_name = user_name.showname
 
-        if not isinstance(username, str):
+        if not isinstance(user_name, str):
             raise TypeError("argument must be str or User class")
             
         user = self.get_user(user_name)
