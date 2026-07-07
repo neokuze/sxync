@@ -5,6 +5,7 @@ import string
 import traceback
 import sys
 import json
+import time
 import aiohttp
 import logging
 from asyncio import TimeoutError
@@ -17,21 +18,25 @@ from . import constants
 from .exceptions import InvalidRoom, InvalidPasswd, WebSocketClosure
 from . import utils
 
-from aiohttp import ClientTimeout
 from aiohttp.http_websocket import WSCloseCode, WebSocketError
 from aiohttp.client_exceptions import ServerDisconnectedError, ServerTimeoutError
 
 RTimeout = 5
 TIMEOUT = 5
+RECEIVE_TIMEOUT = 1200  # reinicia cada 20 minutos si no llega nada.
+HEARTBEAT_INTERVAL = 300 # cada 5 minutos se revisa que la conexion siga activa.
 
 
 class WS:
     def __init__(self, client):
         self._client = client
         self.reconnect = False
+        self._connected = False
         self._session = None
         self._ws = None
         self._listen_task = None
+        self._heartbeat_task = None
+        self._last_received = 0  # timestamp del ultimo mensaje recibido
         self._headers = {}
 
 
@@ -60,7 +65,6 @@ class WS:
             self._session = None
             
     async def _listen_websocket(self):
-        timeout = ClientTimeout(sock_connect=300, sock_read=300)
         while self.reconnect:
             try:
                 headers = {'referer': constants.login_url}
@@ -73,13 +77,27 @@ class WS:
                 aiohttp.client_exceptions.WSServerHandshakeError
                 ) as e:
                 logging.error("Websocket connection Error.")
+                await self._close_session()
+                await asyncio.sleep(RTimeout)
+                continue
             else:
-                self.reset()
+                # Solo resetear si es reconexion, no en la primera conexion
+                if self._connected:
+                    self.reset()
+                    await self.client._call_event("reconnect", self)
+                else:
+                    self._connected = True
+
+                self._last_received = time.time()
+                self._heartbeat_task = asyncio.create_task(self._heartbeat_monitor())
+
                 try:
                     await self._init()
-                    while True:  # / while for receiving data? do
+                    while True:
                         if self._ws and not self._ws.closed:
-                            msg = await asyncio.wait_for(self._ws.receive(), timeout=timeout.total)
+                            msg = await asyncio.wait_for(
+                                self._ws.receive(), timeout=RECEIVE_TIMEOUT)
+                            self._last_received = time.time()
                             if msg.type == aiohttp.WSMsgType.TEXT:
                                 await self._receive_message(msg.data)
                             elif msg.type is aiohttp.WSMsgType.ERROR:
@@ -90,25 +108,61 @@ class WS:
                                 raise WebSocketClosure
                         else:
                             break
-                except (ConnectionResetError, WebSocketClosure, asyncio.exceptions.CancelledError,
+                except (ConnectionResetError, WebSocketClosure,
                         ServerDisconnectedError, WebSocketError
                         ) as e:
-                    if isinstance(e, asyncio.CancelledError):
-                        logging.debug("WebSocket listener task cancelled")
-                        return # Interrupt loop
                     if self._ws and self._ws.closed:
                         errorname = {code: name for name,
                                     code in WSCloseCode.__members__.items()}
-                        logging.error("[WS] {}: {}".format( self.name, errorname[self._ws.close_code]))
+                        logging.error("[WS] {}: {}".format(self.name, errorname.get(self._ws.close_code, 'UNKNOWN')))
                         
-                        if errorname[self._ws.close_code] in [WSCloseCode.SERVICE_RESTART, WSCloseCode.ABNORMAL_CLOSURE]:
+                        if self._ws.close_code in (WSCloseCode.SERVICE_RESTART, WSCloseCode.ABNORMAL_CLOSURE):
                             await self._client._get_new_session()
-                    
+
+                except asyncio.CancelledError:
+                    logging.debug("WebSocket listener task cancelled")
+                    await self._stop_heartbeat()
+                    await self._disconnect(False)
+                    return
+
                 except (asyncio.TimeoutError, ServerTimeoutError, TimeoutError):
-                    await asyncio.sleep(TIMEOUT)
+                    logging.warning("[WS] %s: No data received in %ds, forcing reconnect...", 
+                                   self.name, RECEIVE_TIMEOUT)
                 
                 finally:
+                    await self._stop_heartbeat()
                     await self._disconnect(False)
+
+            if self.reconnect:
+                await asyncio.sleep(RTimeout)
+
+    async def _heartbeat_monitor(self):
+        """
+        Verifica periódicamente que la conexión siga viva.
+        Si no recibimos datos en RECEIVE_TIMEOUT segundos, cerramos el WS
+        para forzar reconexión.
+        """
+        try:
+            while self._ws and not self._ws.closed:
+                await asyncio.sleep(HEARTBEAT_INTERVAL)
+                elapsed = time.time() - self._last_received
+                if elapsed > RECEIVE_TIMEOUT:
+                    logging.warning(
+                        "[WS] %s: Connection appears dead (no data in %.0fs), closing...",
+                        self.name, elapsed)
+                    await self._close_connection()
+                    return
+        except asyncio.CancelledError:
+            pass
+
+    async def _stop_heartbeat(self):
+        if self._heartbeat_task and not self._heartbeat_task.done():
+            self._heartbeat_task.cancel()
+            try:
+                await self._heartbeat_task
+            except asyncio.CancelledError:
+                pass
+            self._heartbeat_task = None
                     
                     
 
@@ -139,9 +193,6 @@ class WS:
         """
         function that supposed to connect.
         """
-        if not self._session or self._session.closed:
-            self._session = aiohttp.ClientSession(headers=self._headers)
-
         room = {"GET": f"/ws/{self.type}/{self._name}/ HTTP/1.1"}
         self._headers = room | utils.generate_header()
         if not anon:
@@ -151,7 +202,7 @@ class WS:
                 self._headers['Cookie'] = "csrftoken={}; sessionid={}".format(
                     self.client._Jar.csrftoken, self.client._Jar.session_id_value)
 
-        # connect (?)
+        # connect
         self._listen_task = asyncio.create_task(self._listen_websocket())
         await self._connection_wait()
         
@@ -181,18 +232,16 @@ class WS:
 
     async def close(self):
         self.cancel()
+        await self._stop_heartbeat()
         await self._disconnect()
 
     async def listen(self, anon=False, reconnect=True):
         """
-        Join and wait on room connection
+        Join and wait on room connection.
+        Reconnection is handled internally by _listen_websocket.
         """
         self.reconnect = reconnect
-        while True:
-            await self._connect(anon)
-            if not self.reconnect:
-                break
-            await asyncio.sleep(3)
+        await self._connect(anon)
 
     async def disconnect(self, anon=False, reconnect=True):
         self.reconnect = False

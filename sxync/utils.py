@@ -95,12 +95,12 @@ async def _fetch_html(url, headers={}, cookie_jar=None, allow_redirects=True, da
 
 
 class Jar:
-    def __init__(self, username, password, loop):
-        self.loop = loop
+    def __init__(self, username, password, loop=None):
         self._default_user_name = username
         self._default_password = password
         self._limit = 70 # do not modify this
         self._counter = 0
+        self._cookie_jar = None
         self._reset()
 
     def _reset(self):
@@ -110,7 +110,13 @@ class Jar:
         self.session_id_value = str()
         self._success = None
         self._profile = str()
-        self.cookie_jar = aiohttp.CookieJar(unsafe=False, loop=self.loop)
+        self._cookie_jar = None
+
+    @property
+    def cookie_jar(self):
+        if self._cookie_jar is None:
+            self._cookie_jar = aiohttp.CookieJar(unsafe=False)
+        return self._cookie_jar
 
     def __repr__(self):
         return "[Jar]"
@@ -181,9 +187,8 @@ class Struct:
         return f"<{self._name}>"
 
 def remove_html_tags(text):
-    text = " {} ".format(text)
     clean_text = re.sub(r'<[^>]+>', '', text)
-    return clean_text
+    return clean_text.strip()
 
 async def get_profile():
     fetch_data = await _fetch_html(constants.login_url, headers={'Accept':'application/json'})

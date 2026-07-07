@@ -66,7 +66,7 @@ async def on_userlist(data):
         self._usercounter = data.get('count')
     if users:
         get_all_profiles = [user.get_data() for user in users]
-        asyncio.gather(*get_all_profiles)
+        await asyncio.gather(*get_all_profiles)
 
 
 async def on_join(data):
@@ -85,8 +85,7 @@ async def on_join(data):
         self._userlist[user]._update(
             dict(sessions=active, join_time=join_time, info=info))
     if not user._fetched_profile and not user.isanon:
-        fetch = [user.get_data(), asyncio.sleep(0)]
-        asyncio.gather(*fetch)
+        await user.get_data()
     await self.client._call_event("join_user", self, user, join_time)
 
 
@@ -159,7 +158,7 @@ async def on_recent_users(data): #TODO
             userlist.append(user)
         if userlist:
             get_all_profiles = [user.get_data() for user in userlist]
-            asyncio.gather(*get_all_profiles)
+            await asyncio.gather(*get_all_profiles)
             
 
 async def on_edit_message(data):

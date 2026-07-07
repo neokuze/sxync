@@ -94,11 +94,15 @@ class Bot(MessageHandler):
         self._watching_rooms.clear()
         if self.pm:
             await self.pm.close()
-        self._task_handle_messages.cancel()
-
-        await self._task_handle_messages
+        if self._task_handle_messages:
+            self._task_handle_messages.cancel()
+            try:
+                await self._task_handle_messages
+            except asyncio.CancelledError:
+                pass
 
         self._running = False
+        self.shutdown_executor()
 
     def join_room(self, room_name) -> None:
         if room_name not in self._watching_rooms.keys():
