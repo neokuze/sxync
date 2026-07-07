@@ -15,7 +15,7 @@ class Super(sxync.client.Bot):
         pass # init something here
 
     async def on_connect(self, room):
-        print(f"[info] Joining {room.name}.")
+        print(f"[info] Joined {room.name}.")
 
     async def on_disconnect(self, room):
         print(f"[info] Leaving {room.name}.")
@@ -26,7 +26,7 @@ class Super(sxync.client.Bot):
     async def on_message(self, message):
         user = f"{message.user.showname if message.user.showname is None else message.user.name}"
         print(message.time, message.room.name, user , ascii(message.body)[1:-1])
-        message_content = message.body
+        message_content = message.body.strip()
         if len(message_content.split()) > 1:
             cmd, args = message_content.split(" ", 1)
             args = args.split()
@@ -44,7 +44,13 @@ class Super(sxync.client.Bot):
             elif cmd in ['hello', 'test', 'a']:
                 await message.room.send_msg(f"Hello {user}") #user must me be handle by id.
             
-loop = asyncio.get_event_loop()
+try:
+    loop = asyncio.get_event_loop()
+    if loop.is_closed():
+        raise RuntimeError
+except RuntimeError:
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 bot = Super()
 
 async def start():
